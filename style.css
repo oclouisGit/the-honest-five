@@ -1,203 +1,180 @@
-/* Reset default margin and padding */
+/* ====== Base Styles ====== */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-/* Set the body's background and full height */
 body {
     font-family: Arial, sans-serif;
     background-color: #f8f8f8;
     display: flex;
     flex-direction: column;
-    height: 100vh; /* Full height of the viewport */
-    justify-content: space-between; /* Push content apart */
+    min-height: 100vh;
+    justify-content: space-between;
+    color: #4b3b2f;
 }
 
-/* Create a flex container that takes up all available space */
-.init-link-container {
-    display: flex;
-    flex-grow: 1; /* Allow content to grow and take up available space */
-    justify-content: center; /* Center the content horizontally */
-    align-items: center; /* Center the content vertically */
-    text-align: center;
+h1 {
+    font-size: 30px;
 }
 
-/* Style the navigation links */
-nav ul {
-    list-style-type: none;
-}
-
-nav ul li {
-    margin: 20px 0; /* Space between links */
-}
-
-nav a {
-    text-decoration: none;
-    color: #4b3b2f; /* Soft brown color */
-    font-size: 24px;
-    font-weight: bold;
-    padding: 10px 20px; /* Add padding to make the link area larger */
-    display: inline-block; /* Make the anchor tag behave like a block element */
-    position: relative; /* For positioning */
-    transition: transform 0.3s ease; /* Smooth transition for scaling and color */
-    transform-origin: center; /* Ensure scaling happens from the center */
-    will-change: transform; /* Optimize for transform property */
-}
-
-/* Hover effect: Make text grow slightly */
-nav a:hover {
-    transform: scale(1.1); /* Scale the text to 110% of its original size */
-}
-
-/* Header styling */
+/* ====== Layout Components ====== */
+/* -- Header -- */
 header {
-    background-color: #f8f8f8; /* Same background as body */
+    background-color: #4b3b2f;
     width: 100%;
-    padding: 0 0;
-    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1); /* Subtle shadow for header */
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .nav-container {
     display: flex;
-    justify-content: center; /* Center the nav on the page */
+    justify-content: center;
     align-items: center;
-    position: relative; /* For positioning mobile nav */
+    position: relative;
+    max-width: 1200px; /* Match content-wrapper max-width */
+    margin: 0 auto; /* Center the nav container */
+    padding: 1rem;
 }
 
-/* Desktop navigation */
+/* -- Main Content Area -- */
+main {
+    flex: 1;
+    width: 100%;
+}
+
+.content-wrapper {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 10px 150px 0 150px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+}
+
+/* -- Footer -- */
+footer {
+    text-align: center;
+    color: #f8f8f8;
+    padding: 15px 0;
+    width: 100%;
+    font-size: 10px;
+    background-color: #4b3b2f;
+    box-shadow: 0px -2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* ====== Navigation Styles ====== */
+/* -- Main Navigation -- */
 .main-nav ul {
     display: flex;
     list-style-type: none;
-    gap: 30px; /* Space between items */
+    gap: 30px;
 }
 
 .main-nav a {
     text-decoration: none;
-    color: #4b3b2f;
-    font-size: 18px;
+    color: #f8f8f8;
+    font-size: 30px; /* Increased to match init-link-container */
     font-weight: bold;
-    padding: 10px 20px;
+    padding: 0px 20px;
+    display: inline-block;
+    position: relative;
     transition: transform 0.3s ease;
+    transform-origin: center;
+    will-change: transform;
 }
 
 .main-nav a:hover {
-    transform: scale(1.1);
+    transform: scale(1.1); /* Matches init-link-container hover effect */
 }
 
-/* Mobile navigation (hidden on desktop) */
+/* -- Mobile Navigation -- */
 .mobile-nav {
     display: none;
 }
 
-/* Philosophy Content Section */
-.philosophy-content {
-    line-height: 1.6;
-    color: #4b3b2f; /* Dark soft brown color for text */
-    margin: 0 auto;
-    padding: 0 200px;
-    max-width: 1200px;
-}
-
-/* Headings Styling */
-.philosophy-content h1 {
-    font-size: 32px;
-    font-weight: bold;
-    color: #4b3b2f; /* Slightly lighter soft brown */
+/* -- Initial Link Container (Homepage) -- */
+.init-link-container {
+    display: flex;
+    flex-grow: 1;
+    justify-content: center;
+    align-items: center;
     text-align: center;
-    margin-bottom: 20px;
 }
 
-.philosophy-content h2 {
+.init-link-container nav ul {
+    list-style-type: none;
+}
+
+.init-link-container nav ul li {
+    margin: 20px 0;
+}
+
+.init-link-container nav a {
+    text-decoration: none;
+    color: #4b3b2f;
     font-size: 24px;
     font-weight: bold;
-    color: #4b3b2f;
-    text-align: center;
-    margin-top: 30px;
-    margin-bottom: 15px;
-}
-
-/* Paragraph Styling */
-.philosophy-content p {
-    font-size: 18px;
-    margin-bottom: 10px;
-    margin-top: 10px;
-}
-
-/* Ordered List Styling */
-.philosophy-content ol {
-    margin: 15px 0;
-    padding-left: 30px; /* Indent list */
-    list-style-type: decimal;
-    font-style: italic;
-}
-
-.philosophy-content ol li {
-    margin-bottom: 10px;
-    font-size: 18px;
-    color: #4b3b2f;
-}
-
-/* Emphasize Important Text */
-.philosophy-content em {
-    font-style: italic;
-    color: #4b3b2f;
-}
-
-/* Footnote styling */
-.footnote {
+    padding: 10px 20px;
     display: inline-block;
-    font-size: 12px; /* Adjust font size as needed */
-    color: #4b3b2f;
-    margin-top: 20px;
-    line-height: 1.4;
-    padding-left: 50px;
+    position: relative;
+    transition: transform 0.3s ease;
+    transform-origin: center;
+    will-change: transform;
 }
 
-/* Footer Styling */
-footer {
+.init-link-container nav a:hover {
+    transform: scale(1.1);
+}
+
+/* ====== Philosophy Styles ====== */
+.philosophy-content h1{
     text-align: center;
-    color: #4b3b2f;
-    padding: 15px 0;
-    width: 100%;
-    font-size: 10px;
-    background-color: #f8f8f8;
-    box-shadow: 0px -2px 5px rgba(0, 0, 0, 0.1); /* Subtle shadow for footer */
 }
 
-/* Responsive styling for mobile */
-@media (max-width: 768px) {
-    .main-nav {
-        display: none; /* Hide main nav on mobile */
+/* ====== Responsive Styles ====== */
+@media (max-width: 600px) {
+    .content-wrapper {
+        margin: 0 auto;
+        padding: 0px 100px 0 100px;
     }
+    
+    .nav-container {
+        margin: 0 20px;
+    }
+
+    .main-nav a {
+
+        padding: 0px;
+    }
+}
+
+@media (max-width: 480px) {
+    .main-nav {
+        display: none;
+    }
+    
     .mobile-nav {
         display: flex;
         justify-content: center;
         width: 100%;
     }
+    
     .mobile-nav a {
-        color: #4b3b2f;
-        font-size: 18px;
+        color: #f8f8f8;
+        font-size: 24px;
         text-decoration: none;
         font-weight: bold;
-        padding: 10px 20px;
         border-radius: 5px;
     }
+    
     main {
         padding: 20px 10px;
     }
-    .philosophy-content h1 {
-        font-size: 28px;
-    }
-    .philosophy-content h2 {
-        font-size: 20px;
-    }
-    .philosophy-content p,
-    .philosophy-content ol li {
-        font-size: 16px;
-    }
-    .philosophy-content {
-        padding: 0 0px; /* Less padding on small screens */
+
+    .content-wrapper {
+        margin: 0 auto;
+        padding: 0px;
     }
 }
