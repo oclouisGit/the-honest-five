@@ -12,6 +12,17 @@ try {
     console.error('Error creating Supabase client:', error);
 }
 
+// Function to query nearest reviews
+async function getNearestReviews(latitude, longitude) {
+    const { data, error } = await supabase.rpc('nearby_reviews', {
+        lat: 40.807313,
+        long: -73.946713,
+      })
+  
+    if (error) throw error;
+    return data;
+}
+
 async function fetchRecentReviews() {
     try {
         console.log("Attempting to fetch reviews...");
@@ -24,6 +35,8 @@ async function fetchRecentReviews() {
 
         // Add loading indicator
         container.innerHTML = '<p>Loading reviews...</p>';
+
+        
 
         const { data, error } = await supabase
             .from('reviews')
@@ -159,17 +172,12 @@ function displayReviews(reviews) {
     }
 }
 
-// Mappings for a more generic searchReviews function
-const searchMappings = {
-    rating: (term) => `rating.eq.${parseFloat(term)}`, // Adjusted for Supabase's logic tree format
-    text: (term) => `title.ilike.%${term}%,summary.ilike.%${term}%`, // Combine title and summary
-    category: (term) => `category.ilike.%${term}%`, // Cuisine
-  };
 
-  async function searchReviews(
+async function searchReviews(
     searchTerm = '',          // Default to an empty string
     category_ids = [],          // Default to an empty array
-    location = null,          // Default to null
+    user_latitude = null,          // Default to null
+    user_longitude = null,          // Default to null
     ratingMin = 0,            // Default to 0
     ratingMax = 10            // Default to 10
     ) {    try {
@@ -195,8 +203,11 @@ const searchMappings = {
         }
 
         // Add location filter (if applicable)
-        if (location) {
-            query = query.eq('location', location); // Search by location
+        if (user_latitude != null && user_longitude != null) {
+            query = query.rpc('nearby_reviews', {
+                lat: user_latitude,
+                long: user_longitude,
+              })
         }
 
         // Add rating range filter (if applicable)
@@ -232,12 +243,15 @@ const searchMappings = {
 // This stores the things about the query that we send to the backend to get the reviews
 let category_ids = [];
 let search_entry = '';
-let location = null;
+let user_latitude = null;
+let user_longitude = null;
 let ratingMax = 10;
 let ratingMin = 0;
 
 fetchRecentReviews();
 fetchAndDisplayCategories();
+// const nearbyReviews = await getNearestReviews(40.71863,-74.00611,);
+// console.log('LOCATION SEARCH', nearbyReviews);
 
 // Wait for DOM to be ready
 document.addEventListener('DOMContentLoaded', () => {
@@ -299,7 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Clicking off the dropdown menu should close it, but not when clicking a button inside the dropdown
         if (e.target !== cuisineDropdownContent && e.target !== cuisineDropdownToggle && e.target !== document.getElementById("cuisine-dropdown-button") && !cuisineDropdownContent.contains(e.target) && !cuisineDropdownContent.classList.contains("hidden") ) {
             cuisineDropdownContent.classList.add("hidden");
-            searchReviews(search_entry, category_ids, location, ratingMin, ratingMax);
+            searchReviews(search_entry, category_ids, user_latitude, user_longitude, ratingMin, ratingMax);
         }
 
     });
@@ -311,7 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (search_entry) {
                 // Perform search
-                searchReviews(search_entry, category_ids, location, ratingMin, ratingMax);
+                searchReviews(search_entry, category_ids, user_latitude, user_longitude, ratingMin, ratingMax);
             } else {
                 // If search is empty, revert to recent reviews
                 fetchRecentReviews();
@@ -352,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 ratingButton.textContent = `Rating (${ratingMin}-${ratingMax})`;
             }
-            searchReviews(search_entry, category_ids, location, ratingMin, ratingMax);
+            searchReviews(search_entry, category_ids, user_latitude, user_longitude, ratingMin, ratingMax);
         }
         
     });
@@ -380,5 +394,42 @@ document.addEventListener('DOMContentLoaded', () => {
         
         maxValue.textContent = maxVal.toFixed(1);
     });
+    
+    // Location button handling
+    const getLocationButton = document.getElementById("get-location-button");
+
+    getLocationButton.addEventListener('click', () => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    user_latitude = position.coords.latitude;
+                    user_longitude = position.coords.longitude;
+                    searchReviews(search_entry, category_ids, user_latitude, user_longitude, ratingMin, ratingMax);
+                    console.log(`Latitude: ${user_latitude}, Longitude: ${user_longitude}`);
+                },
+                (error) => {
+                    switch (error.code) {
+                        case error.PERMISSION_DENIED:
+                            display.textContent = "User denied the request for Geolocation.";
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            display.textContent = "Location information is unavailable.";
+                            break;
+                        case error.TIMEOUT:
+                            display.textContent = "The request to get user location timed out.";
+                            break;
+                        case error.UNKNOWN_ERROR:
+                            display.textContent = "An unknown error occurred.";
+                            break;
+                    }
+                }
+            );
+        } else {
+            display.textContent = "Geolocation is not supported by this browser.";
+        }
+    });
 });
 
+
+
+  
