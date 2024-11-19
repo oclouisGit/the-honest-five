@@ -41,16 +41,151 @@ header {
 main {
     flex: 1;
     width: 100%;
-}
-
-.content-wrapper {
-    max-width: 1000px;
+    padding: 10px;
+    max-width: 700px;
     margin: 0 auto;
-    padding: 10px 150px 0 150px;
+    margin-top: 10px;
+    margin-bottom: 10px;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+    width: 90%;
+    border: 0px solid #4b3b2f;
+    border-radius: 8px;
+    box-sizing: border-box; /* Include borders in the width calculation */
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.2), 
+                 2px 0 8px rgba(0, 0, 0, 0.2); /* Shadows for left and right borders */
+}
+
+.content-wrapper {
+    margin: 0 auto;
+    display: flex;
     width: 100%;
+    flex-direction: column;
+}
+
+/* Container for the search bar and clear button */
+.search-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%; /* take full width of flex item */
+}
+
+/* Style for the filter header */
+.filter-header {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* Divides into 4 equal columns */
+    gap: 8px; /* Space between buttons */
+    align-items: center;
+    border-bottom: 2px solid #4b3b2f;
+    padding: 5px 0px 10px 0px;
+    border-radius: 8px 8px 0 0;
+}
+
+/* Buttons for filters */
+.filter-button {
+    padding: 8px 12px;
+    margin-right: 0px;
+    background-color: #4b3b2f;
+    color: #f8f8f8;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    width: 100%;
+    z-index: 2; /* Ensure the button stays above the input during the transition */
+    transition: transform 0.3s ease; /* Add smooth transition for movement */
+    box-sizing: border-box;
+}
+
+.filter-button:hover {
+    background-color: #654735; /* Slightly lighter on hover */
+}
+
+/* Search bar */
+.search-bar {
+    padding: 7px 12px; /* match the filter-button padding exactly */
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 100%; /* remove max-width property */
+    box-sizing: border-box;
+}
+
+/* Clear button styling */
+.clear-button {
+    position: absolute;
+    right: 8px; /* Inside the search bar padding */
+    background: none;
+    border: none;
+    font-size: 16px;
+    color: #999;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.clear-button:hover {
+    color: #4b3b2f; /* Darker on hover */
+}
+
+/* Cuisine Dropdown Menu */
+.cuisine-dropdown{
+    position: relative;
+    display: inline-block;
+    
+}
+
+.cuisine-dropdown-content{
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    border: 2px solid #4b3b2f;
+    border-top: none;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    border-radius: 4px;
+    background-color: #f8f8f8;
+    z-index: 1;
+    width: 90%;
+
+    left: 50%;  /* Position from the left edge of the parent */
+    transform: translateX(-50%);  /* Center the dropdown by shifting back half its width */
+}
+
+.cuisine-dropdown-button{
+    display: flex;
+    align-items: center;      /* Vertical center */
+    justify-content: center;  /* Horizontal center */
+    width: calc(100% - 16px);
+    color: #4b3b2f;
+    margin: 0px 8px;
+    padding: 8px 16px;
+    border: none;
+    border-bottom: 1px solid #4b3b2f;
+    background-color: #f8f8f8;
+    cursor: pointer;
+    /* Truncate text with ellipsis */
+    white-space: nowrap;
+    overflow: hidden;
+
+}
+
+.bottom-cuisine-button{
+    border: none;
+}
+
+.cuisine-dropdown-content button:hover {
+    box-sizing: border-box; /* Include borders in the width calculation */
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.2), 
+                 2px 0 8px rgba(0, 0, 0, 0.2); /* Shadows for left and right borders */}
+
+/* Space below the filter header */
+#reviews-container {
+    margin-top: 16px;
+}
+
+.hidden {
+    display: none;
 }
 
 /* -- Footer -- */
@@ -137,7 +272,6 @@ footer {
 @media (max-width: 600px) {
     .content-wrapper {
         margin: 0 auto;
-        padding: 0px 100px 0 100px;
     }
     
     .nav-container {
@@ -145,8 +279,13 @@ footer {
     }
 
     .main-nav a {
-
         padding: 0px;
+    }
+
+    .cuisine-dropdown-button{
+        text-align: left;
+        justify-content: left;
+        padding: 8px 0px;
     }
 }
 
@@ -170,11 +309,20 @@ footer {
     }
     
     main {
-        padding: 20px 10px;
+        padding: 10px;
+        width: 95%;
+        margin: 0px auto;
+        margin-top: 10px;
     }
 
     .content-wrapper {
         margin: 0 auto;
         padding: 0px;
     }
+
+    .cuisine-dropdown-button{
+        margin: 0px 4px;
+        width: calc(100% - 8px);
+    }
+
 }
