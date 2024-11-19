@@ -26,19 +26,31 @@
 <main>
     <div class="content-wrapper">
         <div class="filter-header">
-            <div class="cuisine-dropdown" id="cuisine-dropdown">
-                <button class="filter-button" id="cuisine-dropdown-toggle" data-filter="cuisine">Cuisine</button>
-                <div class="cuisine-dropdown-content hidden" id="cuisine-dropdown-content">
-
-                </div>
-            </div>
-            <button class="filter-button" data-filter="location">Location</button>
-            <button class="filter-button" data-filter="rating">Rating</button>
             <button class="filter-button" id="search-toggle-button">Search</button>
             <div class="search-container hidden">
                 <input type="text" id="search-bar" class="search-bar" placeholder="Type to search...">
                 <button id="clear-search" class="clear-button"><</button>
             </div>
+            <div class="cuisine-dropdown" id="cuisine-dropdown">
+                <button class="filter-button" id="cuisine-dropdown-toggle" data-filter="cuisine">Cuisine</button>
+                <div class="cuisine-dropdown-content hidden" id="cuisine-dropdown-content">
+                    <!-- Categories will be dynamically inserted here -->
+                </div>
+            </div>
+
+            <button class="filter-button" id="rating-button">Rating</button>
+            <div class="ratings-slider-container hidden">
+                <div class="ratings-slider-track"></div>
+                <input type="range" min="0" max="10" value="0" step="0.5" class="range-input" id="min-range">
+                <input type="range" min="0" max="10" value="10" step="0.5" class="range-input" id="max-range">
+                <div class="slider-values">
+                    <span id="min-value">0</span>
+                    <span id="max-value">10</span>
+                </div>
+            </div>
+            <button class="filter-button" >Location</button>
+
+
         </div>
         <div id="reviews-container">
             <!-- Reviews will be dynamically inserted here -->

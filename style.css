@@ -81,6 +81,7 @@ main {
     border-bottom: 2px solid #4b3b2f;
     padding: 5px 0px 10px 0px;
     border-radius: 8px 8px 0 0;
+    flex-wrap: wrap;
 }
 
 /* Buttons for filters */
@@ -143,7 +144,7 @@ main {
     border: 2px solid #4b3b2f;
     border-top: none;
     box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-    border-radius: 4px;
+    border-radius: 0 0 4px 4px;
     background-color: #f8f8f8;
     z-index: 1;
     width: 90%;
@@ -167,7 +168,7 @@ main {
     /* Truncate text with ellipsis */
     white-space: nowrap;
     overflow: hidden;
-
+    height: 32px;
 }
 
 .bottom-cuisine-button{
@@ -177,11 +178,104 @@ main {
 .cuisine-dropdown-content button:hover {
     box-sizing: border-box; /* Include borders in the width calculation */
     box-shadow: -2px 0 8px rgba(0, 0, 0, 0.2), 
-                 2px 0 8px rgba(0, 0, 0, 0.2); /* Shadows for left and right borders */}
+                 2px 0 8px rgba(0, 0, 0, 0.2); /* Shadows for left and right borders */
+}
 
+.ratings-slider-container {
+    position: relative;
+    width: 100%;
+    height: 30px;
+    padding: 8px 12px;
+    background-color: #4b3b2f;
+    border-radius: 4px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.slider-track {
+    position: absolute;
+    width: 60%;  /* Adjust this value to control track width */
+    height: 2px;
+    background-color: #f8f8f8;
+    border-radius: 1px;
+}
+
+.range-input {
+    position: absolute;
+    width: 60%;  /* Match track width */
+    -webkit-appearance: none;
+    background: none;
+    pointer-events: none;
+}
+
+.slider-values {
+    position: absolute;
+    width: 90%;  /* Make this wider than the track */
+    display: flex;
+    justify-content: space-between;
+    color: #f8f8f8;
+    font-size: 14px;
+}
+
+/* Style the slider thumb */
+.range-input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 12px;
+    width: 12px;
+    border-radius: 50%;
+    background: #f8f8f8;
+    cursor: pointer;
+    pointer-events: auto;
+    margin-top: -5px;
+}
+
+.range-input::-moz-range-thumb {
+    height: 12px;
+    width: 12px;
+    border-radius: 50%;
+    background: #f8f8f8;
+    cursor: pointer;
+    pointer-events: auto;
+    border: none;
+}
+
+/* Hide default track */
+.range-input::-webkit-slider-runnable-track {
+    -webkit-appearance: none;
+    height: 2px;
+}
+
+.range-input::-moz-range-track {
+    height: 2px;
+}
+
+/* Labels for values */
+.slider-values {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    justify-content: space-between;
+    color: #f8f8f8;
+    font-size: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+                
 /* Space below the filter header */
 #reviews-container {
     margin-top: 16px;
+}
+
+/* Used for the categories dropdown menu */
+.selected{
+    font-weight: 900;
+}
+.selected:hover {
+    font-weight: 900;
 }
 
 .hidden {
@@ -320,9 +414,39 @@ footer {
         padding: 0px;
     }
 
+    .cuisine-dropdown{
+        order: 1;
+        width: 100%;
+    }
+
+    .cuisine-dropdown-content{
+        width: auto;
+        border-radius: 4px;
+        border-top: 2px solid #4b3b2f;
+    }
+
     .cuisine-dropdown-button{
         margin: 0px 4px;
         width: calc(100% - 8px);
+        text-align: center;
+        justify-content: center;
+        padding: 0px 50px;
     }
+    .search-container{
+        order: -1;
+    }
+
+    .filter-header {
+        display: flex;
+        align-items: center;
+        border-bottom: 2px solid #4b3b2f;
+        padding: 5px 0px 10px 0px;
+        border-radius: 8px 8px 0 0;
+        flex-wrap: wrap;
+        flex-direction: column; /* Stack all elements vertically */
+        align-items: flex-start; /* Align elements to the start */
+    }
+
+
 
 }
