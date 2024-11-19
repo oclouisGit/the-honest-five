@@ -189,6 +189,35 @@ async function searchReviews(
         // Show loading state
         container.innerHTML = '<p>Searching reviews...</p>';
 
+        let reviewIds = null;
+
+        // Step 1: Fetch location-based review IDs 
+        if (user_latitude != null && user_longitude != null) {
+            console.log('Fetching nearby reviews based on location...');
+            const { data: locationData, error: locationError } = await supabase.rpc(
+                'nearby_reviews',
+                {
+                    lat: user_latitude,
+                    long: user_longitude,
+                }
+            );
+
+            if (locationError) {
+                console.error('Error fetching nearby reviews:', locationError);
+                throw locationError;
+            }
+
+            if (locationData && locationData.length > 0) {
+                // Extract the IDs of the reviews from the location-based data
+                reviewIds = locationData.map((review) => review.id);
+                console.log('Nearby review IDs:', reviewIds);
+            } else {
+                // If no nearby reviews are found, exit early
+                container.innerHTML = `<p>No reviews found near your location.</p>`;
+                return;
+            }
+        }
+
         // Start the query from 'reviews' table
         let query = supabase.from('reviews').select('*');
 
@@ -202,17 +231,14 @@ async function searchReviews(
             query = query.or(`title.ilike.%${searchTerm}%,summary.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`);  // Search across title, summary, and content
         }
 
-        // Add location filter (if applicable)
-        if (user_latitude != null && user_longitude != null) {
-            query = query.rpc('nearby_reviews', {
-                lat: user_latitude,
-                long: user_longitude,
-              })
-        }
-
         // Add rating range filter (if applicable)
         if (ratingMin !== 0 || ratingMax !== 10) {
             query = query.gte('rating', ratingMin).lte('rating', ratingMax); // Search by rating
+        }
+
+        // Filter by review IDs (if location-based search was performed)
+        if (reviewIds !== null) {
+            query = query.in('id', reviewIds);
         }
 
         // Perform the Supabase query
@@ -220,12 +246,13 @@ async function searchReviews(
 
 
         if (error) {
-        throw error;
+            console.error('Error fetching reviews:', error);
+            throw error;
         }
 
         if (!data || data.length === 0) {
-        container.innerHTML = `<p>No reviews found matching "${searchTerm}".</p>`;
-        return;
+            container.innerHTML = `<p>No reviews found matching "${searchTerm}".</p>`;
+            return;
         }
 
         // Reuse existing display function
