@@ -27,6 +27,7 @@ header {
     box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
 }
 
+
 .nav-container {
     display: flex;
     justify-content: center;
@@ -200,24 +201,17 @@ main {
     height: 2px;
     background-color: #f8f8f8;
     border-radius: 1px;
+
 }
 
 .range-input {
     position: absolute;
     width: 60%;  /* Match track width */
     -webkit-appearance: none;
-    background: none;
+    background: #f8f8f8;
     pointer-events: none;
 }
 
-.slider-values {
-    position: absolute;
-    width: 90%;  /* Make this wider than the track */
-    display: flex;
-    justify-content: space-between;
-    color: #f8f8f8;
-    font-size: 14px;
-}
 
 /* Style the slider thumb */
 .range-input::-webkit-slider-thumb {
@@ -254,20 +248,126 @@ main {
 /* Labels for values */
 .slider-values {
     position: absolute;
-    left: 12px;
+    left: 6px;
     right: 12px;
     display: flex;
     justify-content: space-between;
     color: #f8f8f8;
     font-size: 14px;
+    width: 95%;  /* Make this wider than the track */
     top: 50%;
     transform: translateY(-50%);
+    
     pointer-events: none;
 }
                 
 /* Space below the filter header */
-#reviews-container {
-    margin-top: 16px;
+
+.review-card {
+    margin: 10px 0;
+    padding: 10px 15px;
+    border-radius: 4px;
+    box-sizing: border-box; /* Include borders in the width calculation */
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.2), 
+                 2px 0 8px rgba(0, 0, 0, 0.2); /* Shadows for left and right borders */
+    align-content: center;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Ensure the parent container is properly set up */
+.review-card-body-container {
+    display: flex;
+    flex-direction: row; 
+    justify-content: space-between; 
+    gap: 20px; /* Optional: spacing between the columns */
+}
+
+/* Main review text container */
+.review-text-container {
+    flex: 2; 
+    display: flex;
+    flex-direction: column;
+    max-width: 50%;
+}
+/* Review Right hand side: gauge and rating number */
+.right-sidebar {
+    flex: 1; /* Take up 1 part out of 4 (25%) */
+    display: flex;
+    flex-direction: column;
+    border-radius: 4px;
+    box-sizing: border-box; /* Include borders in the width calculation */
+    border: 1px solid #4b3b2f;
+
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.2), 
+                 2px 0 8px rgba(0, 0, 0, 0.2); /* Shadows for left and right borders */
+    margin: 20px;
+    padding: 10px;
+    max-width: 33%;
+
+}
+
+.rating-number-container {
+    align-items: center;
+}
+
+.rating-number-container h1 {
+    text-align: center;
+}
+
+/* .review-text-container a {
+    align-self: flex-start;
+    margin-top: 10px;
+    text-decoration: none;
+    color: #007bff;
+    border: 1px solid #007bff;
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+
+.review-text-container a:hover {
+    background-color: #007bff;
+    color: white;
+} */
+
+.gauge-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100px;
+    margin-bottom: 25px;
+}
+
+/* I might want a line here - can't decide */
+.plus-and-minus-container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    gap: 10px;
+}
+
+.plusses, .minuses {
+    border-radius: 4px;
+    width: 100%;
+}
+
+.plusses p, .minuses p {
+    font-size: 12px;
+    align-self: flex-start;
+    margin-top: 3px;
+    text-decoration: none;
+    color: black;
+    padding: 4px 6px;
+    border-radius: 4px;
+}
+
+.plusses p {
+    background-color: rgba(0, 255, 0, 0.5);
+}
+
+.minuses p {
+    background-color: rgba(255, 0, 0, 0.5);
 }
 
 /* Used for the categories dropdown menu */
@@ -278,9 +378,6 @@ main {
     font-weight: 900;
 }
 
-.hidden {
-    display: none;
-}
 
 /* -- Footer -- */
 footer {
@@ -401,12 +498,30 @@ footer {
         font-weight: bold;
         border-radius: 5px;
     }
+
+    .nav-container{
+        margin: 0px;
+    }
+
+    .icon-button {
+        position: absolute; /* This will position the button absolutely within .mobile-nav */
+        top: 14px; /* Align it to the top */
+        right: 14px; /* Align it to the right */
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+    }
     
     main {
-        padding: 10px;
+        padding: 0px;
         width: 95%;
         margin: 0px auto;
-        margin-top: 10px;
+        margin-top: 0px;
+        padding-top: 0px;
+        border: none;
+        background: none;
+        box-shadow: none;
     }
 
     .content-wrapper {
@@ -436,15 +551,41 @@ footer {
 
     .filter-header {
         display: flex;
+        display: none;
         align-items: center;
         border-bottom: 2px solid #4b3b2f;
-        padding: 5px 0px 10px 0px;
+        padding: 10px 0px 0px 0px;
         border-radius: 8px 8px 0 0;
         flex-wrap: wrap;
         flex-direction: column; /* Stack all elements vertically */
         align-items: flex-start; /* Align elements to the start */
+        border: none;
     }
 
+    .review-card-body-container {
+        flex-direction: column; 
+        gap: 10px; 
+        text-align: left;
+    }
+
+    .review-text-container {
+        max-width: 100%; /* Ensure it takes the full width */
+        flex: none; /* Reset flex growth/shrink */
+        text-align: left;
+    }
+
+    .right-sidebar {
+        width: 80%; /* Set a fixed width, or you can adjust this to your preference */
+        flex: none; /* Reset flex growth/shrink */
+        min-width: 200px;
+        margin: 0 auto; /* Center the sidebar in its container */
+        display: flex; /* Enable flexbox for its content */
+        justify-content: center; /* Horizontally center content inside */
+        align-items: center; /* Vertically center content inside */
+    }
+}
 
 
+.hidden {
+    display: none !important;
 }

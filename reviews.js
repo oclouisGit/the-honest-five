@@ -1,4 +1,5 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.21.0/+esm';
+import './dist/gauge.js';
 
 const supabaseUrl = 'https://ecsqqzuguvdrhlqsbjci.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjc3FxenVndXZkcmhscXNiamNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzE1NDc2NjQsImV4cCI6MjA0NzEyMzY2NH0.GOWZP1KYpl_tAGjH2FL_16UPkkcpyQB17tWQnDbzBik';
@@ -55,6 +56,7 @@ async function fetchRecentReviews() {
 
         console.log('Retrieved reviews:', data);
         displayReviews(data);
+        return data;
 
     } catch (error) {
         console.error('Error in fetchRecentReviews:', error);
@@ -141,6 +143,23 @@ async function fetchAndDisplayCategories() {
     }
 }
 
+// Customization for the Gauges made for each review
+let opts = {
+    angle: 0.18, // The span of the gauge arc
+    lineWidth: 0.2, // The line thickness
+    radiusScale: 0.8, // Relative radius
+    pointer: {
+      length: 0.48, //Relative to gauge radius
+      strokeWidth: 0.045, // The thickness
+      color: '#4b3b2f' // Fill color
+    },
+    limitMax: false,     // If false, max value increases automatically if value > maxValue
+    limitMin: false,     // If true, the min value of the gauge will be fixed
+    percentColors: [[0.0, "#ff0000" ], [0.50, "#ffff00"], [1.0, "#00ff00"]],
+    highDpiSupport: true,     // High resolution support
+};
+
+
 function displayReviews(reviews) {
     try {
         console.log("Starting to display reviews...");
@@ -152,16 +171,63 @@ function displayReviews(reviews) {
         reviews.forEach(review => {
             console.log('Processing review:', review);
             const reviewElement = document.createElement('div');
-            reviewElement.classList.add('review');
+            reviewElement.classList.add('review-card');
+
+            // Create plusses list
+            const plussesList = review.plusses && review.plusses.length 
+                ? `<div class="plusses">
+                    <ul>${review.plusses.map(plus => `<p>${plus}</p>`).join('')}</ul>
+                </div>`
+                : '';
+
+            // Create minuses list
+            const minusesList = review.minuses && review.minuses.length 
+                ? `<div class="minuses">
+                    <ul>${review.minuses.map(minus => `<p>${minus}</p>`).join('')}</ul>
+                </div>`
+                : '';
+            
+            // I think this might need to be reserved for the full page article because its hard to fit this vertically while making sense
+            // <div class="plus-and-minus-container"> 
+            //     ${plussesList}
+            //     ${minusesList}
+            // </div>
+
             reviewElement.innerHTML = `
-                <h1>${review.title || 'Untitled'}</h1>
-                <p><strong>Date:</strong> ${review.publish_date ? new Date(review.publish_date).toLocaleDateString() : 'No date'}</p>
-                <p>${review.summary || 'No summary available'}</p>
-                <a href="review.html?id=${review.id}">Read More</a>
+                
+                <div class="review-card-body-container">
+                    <div class="review-text-container"> 
+                        <h1>${review.title || 'Untitled'}</h1>
+                        <p><strong>Date:</strong> ${review.publish_date ? new Date(review.publish_date).toLocaleDateString() : 'No date'}</p>
+                        <p>${review.summary || 'No summary available'}</p>
+
+                    </div>
+
+                    <div class="right-sidebar">
+                        <div class="rating-number-container"> 
+                            <h1 id=rating-number>${review.rating}/10</h1>
+                        </div>
+                        <div class="gauge-container"> 
+                            <canvas id=gauge-${review.id}></canvas>
+                        </div>
+                        <div class="plus-and-minus-container"> 
+                            ${plussesList}
+                            ${minusesList}
+                        </div>
+                    </div>
+                </div>
             `;
+
+            // Make the gauge for this review
             reviewsContainer.appendChild(reviewElement);
+            console.log('Processing gauge:', review);
+            var target = document.getElementById(`gauge-${review.id}`);
+            var gauge = new Gauge(target).setOptions(opts);
+            gauge.maxValue = 10;
+            gauge.setMinValue(0); 
+            gauge.set(review.rating);
+            gauge.animationSpeed = 32
         });
-        
         console.log('Finished displaying reviews');
     } catch (error) {
         console.error('Error in displayReviews:', error);
@@ -244,7 +310,6 @@ async function searchReviews(
         // Perform the Supabase query
         const { data, error } = await query;
 
-
         if (error) {
             console.error('Error fetching reviews:', error);
             throw error;
@@ -255,8 +320,32 @@ async function searchReviews(
             return;
         }
 
-        // Reuse existing display function
-        displayReviews(data);
+        // Update filter icon for mobile
+        if (
+            category_ids.length === 0 && // Check if category_ids is an empty array
+            search_entry === '' && // Check if search_entry is an empty string
+            user_latitude === null && // Check if user_latitude is null
+            user_longitude === null && // Check if user_longitude is null
+            ratingMax === 10 && // Check if ratingMax is 10
+            ratingMin === 0 // Check if ratingMin is 0
+        ) {
+            outlinedFilterButton.classList.remove("hidden");
+            filledFilterButton.classList.add("hidden");
+        } else {
+            outlinedFilterButton.classList.add("hidden");
+            filledFilterButton.classList.remove("hidden");
+        }
+
+        // If location-based reviews were fetched, ensure they're in the original order
+        // I don't know why I had to do this but nothing else I did could get this to do what I wanted
+        if (reviewIds !== null && data) {
+            const orderedData = reviewIds.map(id => data.find(review => review.id === id)).filter(review => review !== undefined);
+            displayReviews(orderedData);
+            return orderedData;
+        } else {
+            displayReviews(data);
+            return data;
+        }
 
     } catch (error) {
         console.error('Error in searchReviews:', error);
@@ -275,7 +364,7 @@ let user_longitude = null;
 let ratingMax = 10;
 let ratingMin = 0;
 
-fetchRecentReviews();
+let reviews_list = fetchRecentReviews();
 fetchAndDisplayCategories();
 // const nearbyReviews = await getNearestReviews(40.71863,-74.00611,);
 // console.log('LOCATION SEARCH', nearbyReviews);
@@ -284,8 +373,11 @@ fetchAndDisplayCategories();
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, initiating fetch...');
 
-    // Get the reviews:
+    // Display the gauges
+    // reviews_list.forEach(review => {
 
+    // });
+    
     console.log('category_to_id_map:', category_to_id_map);
     console.log('category_ids:', category_ids);
     
@@ -455,8 +547,36 @@ document.addEventListener('DOMContentLoaded', () => {
             display.textContent = "Geolocation is not supported by this browser.";
         }
     });
+
 });
 
 
+// What to call things
+const filledFilterButton = document.getElementById("filled-icon-button");
+const outlinedFilterButton = document.getElementById("outlined-icon-button");
+const filterButtonContainer = document.querySelector(".filter-button-container"); 
+const filterHeader = document.querySelector(".filter-header"); 
 
-  
+
+
+// Clicking outlined filter button
+outlinedFilterButton.addEventListener("click", () => {
+    // If the menu is closed, open it
+    // Toggle filter header visibility
+    if (filterHeader.style.display === "none" || filterHeader.style.display === "") {
+        filterHeader.style.display = "flex";  // Show the filter header
+    } else {
+        filterHeader.style.display = "none";  // Hide the filter header
+    }
+});
+
+// Clicking filled filter button should close the filter
+filledFilterButton.addEventListener("click", () => {
+    // Toggle filter header visibility
+    if (filterHeader.style.display === "none" || filterHeader.style.display === "") {
+        filterHeader.style.display = "flex";  // Show the filter header
+    } else {
+        filterHeader.style.display = "none";  // Hide the filter header
+    }
+});
+

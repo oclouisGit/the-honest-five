@@ -19,6 +19,15 @@
         </nav>
         <div class="mobile-nav">
             <a href="index.html">HOME</a>
+            <div class="filter-button-container">
+                <button class="icon-button hidden" id="filled-icon-button">
+                    <img src="icons/icons8-filter-ios-17-filled-32.png" alt="Filter Icon">
+                </button>
+                <button class="icon-button" id="outlined-icon-button">
+                    <img src="icons/icons8-filter-ios-17-outlined-32.png" alt="Filter Icon">
+                </button>
+            </div>
+           
         </div>
     </div>
 </header>
@@ -55,6 +64,8 @@
         <div id="reviews-container">
             <!-- Reviews will be dynamically inserted here -->
         </div>
+        <script  type="module" src="dist/gauge.js"></script>
+        <script type="module" src="reviews.js"></script>
     </div>
 
     <!-- Load reviews.js last to ensure functions are available -->
