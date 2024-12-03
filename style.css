@@ -460,7 +460,7 @@ footer {
 }
 
 /* ====== Responsive Styles ====== */
-@media (max-width: 600px) {
+@media (max-width: 700px) {
     .content-wrapper {
         margin: 0 auto;
     }
@@ -478,9 +478,31 @@ footer {
         justify-content: left;
         padding: 8px 0px;
     }
+
+    .review-card-body-container {
+        flex-direction: column; 
+        gap: 10px; 
+        text-align: left;
+    }
+
+    .review-text-container {
+        max-width: 100%; /* Ensure it takes the full width */
+        flex: none; /* Reset flex growth/shrink */
+        text-align: left;
+    }
+
+    .right-sidebar {
+        width: 80%; /* Set a fixed width, or you can adjust this to your preference */
+        flex: none; /* Reset flex growth/shrink */
+        min-width: 200px;
+        margin: 0 auto; /* Center the sidebar in its container */
+        display: flex; /* Enable flexbox for its content */
+        justify-content: center; /* Horizontally center content inside */
+        align-items: center; /* Vertically center content inside */
+    }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 600px) {
     .main-nav {
         display: none;
     }
@@ -561,28 +583,12 @@ footer {
         align-items: flex-start; /* Align elements to the start */
         border: none;
     }
+}
 
-    .review-card-body-container {
-        flex-direction: column; 
-        gap: 10px; 
-        text-align: left;
-    }
+@media (max-width: 480px) {
 
-    .review-text-container {
-        max-width: 100%; /* Ensure it takes the full width */
-        flex: none; /* Reset flex growth/shrink */
-        text-align: left;
-    }
 
-    .right-sidebar {
-        width: 80%; /* Set a fixed width, or you can adjust this to your preference */
-        flex: none; /* Reset flex growth/shrink */
-        min-width: 200px;
-        margin: 0 auto; /* Center the sidebar in its container */
-        display: flex; /* Enable flexbox for its content */
-        justify-content: center; /* Horizontally center content inside */
-        align-items: center; /* Vertically center content inside */
-    }
+
 }
 
 

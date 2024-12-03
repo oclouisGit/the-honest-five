@@ -29,7 +29,7 @@ async function fetchRecentReviews() {
         console.log("Attempting to fetch reviews...");
         
         // Verify the reviews container exists
-        const container = document.getElementById('reviews-container');
+        const container = document.getElementById('review-list-container');
         if (!container) {
             throw new Error('Reviews container not found in DOM');
         }
@@ -60,7 +60,7 @@ async function fetchRecentReviews() {
 
     } catch (error) {
         console.error('Error in fetchRecentReviews:', error);
-        const container = document.getElementById('reviews-container');
+        const container = document.getElementById('review-list-container');
         if (container) {
             container.innerHTML = `<p>Error loading reviews: ${error.message}</p>`;
         }
@@ -163,7 +163,7 @@ let opts = {
 function displayReviews(reviews) {
     try {
         console.log("Starting to display reviews...");
-        const reviewsContainer = document.getElementById('reviews-container');
+        const reviewsContainer = document.getElementById('review-list-container');
         
         // Clear loading message
         reviewsContainer.innerHTML = '';
@@ -172,6 +172,8 @@ function displayReviews(reviews) {
             console.log('Processing review:', review);
             const reviewElement = document.createElement('div');
             reviewElement.classList.add('review-card');
+
+            const reviewSlug = review.slug;
 
             // Create plusses list
             const plussesList = review.plusses && review.plusses.length 
@@ -194,13 +196,11 @@ function displayReviews(reviews) {
             // </div>
 
             reviewElement.innerHTML = `
-                
-                <div class="review-card-body-container">
+                <div class="review-card-body-container" data-review-slug="${reviewSlug}" data-review-id="${review.id}">
                     <div class="review-text-container"> 
                         <h1>${review.title || 'Untitled'}</h1>
                         <p><strong>Date:</strong> ${review.publish_date ? new Date(review.publish_date).toLocaleDateString() : 'No date'}</p>
                         <p>${review.summary || 'No summary available'}</p>
-
                     </div>
 
                     <div class="right-sidebar">
@@ -218,25 +218,108 @@ function displayReviews(reviews) {
                 </div>
             `;
 
+            // Add data attributes
+            const reviewCardBodyContainer = reviewElement.querySelector('.review-card-body-container');
+            reviewCardBodyContainer.dataset.reviewSlug = reviewSlug;
+            reviewCardBodyContainer.dataset.reviewId = review.id;
+
             // Make the gauge for this review
             reviewsContainer.appendChild(reviewElement);
-            console.log('Processing gauge:', review);
             var target = document.getElementById(`gauge-${review.id}`);
             var gauge = new Gauge(target).setOptions(opts);
             gauge.maxValue = 10;
             gauge.setMinValue(0); 
             gauge.set(review.rating);
-            gauge.animationSpeed = 32
+            gauge.animationSpeed = 32;
         });
+
+        // Use event delegation instead of multiple individual listeners
+        reviewsContainer.addEventListener('click', (event) => {
+            const reviewCard = event.target.closest('.review-card-body-container');
+            if (reviewCard) {
+                const reviewSlug = reviewCard.dataset.reviewSlug;
+                const reviewId = reviewCard.dataset.reviewId;
+
+                // Hide current view
+                const reviewCardBodyContainer = document.getElementById("review-list-container");
+                const filterHeader = document.querySelector(".filter-header");
+                reviewCardBodyContainer.classList.add("hidden");
+                filterHeader.classList.add("hidden");
+
+                // Update URL only once
+                history.pushState({ reviewSlug, reviewId }, '', `/reviews/${reviewSlug}`);
+
+                console.log(`Navigating to review: ${reviewSlug}, ID: ${reviewId}`);
+
+                handleReviewNavigation();
+            }
+        });
+
         console.log('Finished displaying reviews');
     } catch (error) {
         console.error('Error in displayReviews:', error);
-        const container = document.getElementById('reviews-container');
+        const container = document.getElementById('review-list-container');
         if (container) {
             container.innerHTML = `<p>Error displaying reviews: ${error.message}</p>`;
         }
     }
 }
+
+// Function to handle review navigation
+function handleReviewNavigation() {
+    const path = window.location.pathname;
+    const match = path.match(/^\/reviews\/(.+)$/);
+
+    if (match) {
+        const reviewSlug = match[1];
+        // Here you would typically fetch the full review details
+        // For now, we'll just log the slug
+        console.log(`Loaded review page for slug: ${reviewSlug}`);
+        loadFullReview(reviewSlug);
+    }
+    const reviewListContainer = document.getElementById("review-list-container");
+    const filterHeader = document.querySelector(".filter-header");
+
+    // If not on a review page, show the reviews list
+    if (!path.startsWith('/reviews/')) {
+        // Ensure reviews list and filter header are visible
+        reviewListContainer.classList.remove("hidden");
+        filterHeader.classList.remove("hidden");
+    }
+}
+
+async function loadFullReview(reviewSlug) {
+    try {
+        // Fetch full review details from Supabase
+        const { data: review, error } = await supabase
+            .from('reviews')
+            .select('*')
+            .eq('slug', reviewSlug)
+            .single();
+
+        if (error) throw error
+
+        // Render full review content
+        renderFullReview(review)
+    } catch (error) {
+        console.error('Error loading review:', error)
+        // Handle error (e.g., show error message)
+    }
+}
+
+function renderFullReview(review) {
+    // Create and populate full review view
+    const fullReviewContainer = document.getElementById('full-review-container')
+    fullReviewContainer.innerHTML = `
+        <h1>${review.title}</h1>
+        <p>${review.full_content}</p>
+        <!-- Add more details as needed -->
+    `
+    // Show full review container, hide others
+}
+
+// Add event listener for browser back/forward navigation
+window.addEventListener('popstate', handleReviewNavigation);
 
 
 async function searchReviews(
@@ -247,7 +330,7 @@ async function searchReviews(
     ratingMin = 0,            // Default to 0
     ratingMax = 10            // Default to 10
     ) {    try {
-        const container = document.getElementById('reviews-container');
+        const container = document.getElementById('review-list-container');
         if (!container) {
         throw new Error('Reviews container not found in DOM');
         }
@@ -349,7 +432,7 @@ async function searchReviews(
 
     } catch (error) {
         console.error('Error in searchReviews:', error);
-        const container = document.getElementById('reviews-container');
+        const container = document.getElementById('review-list-container');
         if (container) {
         container.innerHTML = `<p>Error searching reviews: ${error.message}</p>`;
         }
@@ -371,13 +454,8 @@ fetchAndDisplayCategories();
 
 // Wait for DOM to be ready
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loaded, initiating fetch...');
+    handleReviewNavigation();
 
-    // Display the gauges
-    // reviews_list.forEach(review => {
-
-    // });
-    
     console.log('category_to_id_map:', category_to_id_map);
     console.log('category_ids:', category_ids);
     
