@@ -16,7 +16,7 @@ body {
 }
 
 h1 {
-    font-size: 30px;
+    font-size: 22px;
 }
 
 /* ====== Layout Components ====== */
@@ -45,7 +45,7 @@ main {
     padding: 10px;
     max-width: 700px;
     margin: 0 auto;
-    margin-top: 10px;
+    margin-top: 0px;
     margin-bottom: 10px;
     display: flex;
     flex-direction: column;
@@ -54,8 +54,8 @@ main {
     border: 0px solid #4b3b2f;
     border-radius: 8px;
     box-sizing: border-box; /* Include borders in the width calculation */
-    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.2), 
-                 2px 0 8px rgba(0, 0, 0, 0.2); /* Shadows for left and right borders */
+    /* box-shadow: -2px 0 8px rgba(0, 0, 0, 0.2), 
+                 2px 0 8px rgba(0, 0, 0, 0.2);  */
 }
 
 .content-wrapper {
@@ -179,7 +179,7 @@ main {
 .cuisine-dropdown-content button:hover {
     box-sizing: border-box; /* Include borders in the width calculation */
     box-shadow: -2px 0 8px rgba(0, 0, 0, 0.2), 
-                 2px 0 8px rgba(0, 0, 0, 0.2); /* Shadows for left and right borders */
+                 2px 0 8px rgba(0, 0, 0, 0.2); 
 }
 
 .ratings-slider-container {
@@ -265,46 +265,81 @@ main {
 
 .review-card {
     margin: 10px 0;
-    padding: 10px 15px;
+    padding: 15px 15px;
     border-radius: 4px;
-    box-sizing: border-box; /* Include borders in the width calculation */
+    box-sizing: border-box;
     box-shadow: -2px 0 8px rgba(0, 0, 0, 0.2), 
-                 2px 0 8px rgba(0, 0, 0, 0.2); /* Shadows for left and right borders */
-    align-content: center;
-    display: flex;
-    flex-direction: column;
+                 2px 0 8px rgba(0, 0, 0, 0.2);
+    height: 145px;
 }
 
-/* Ensure the parent container is properly set up */
 .review-card-body-container {
     display: flex;
-    flex-direction: row; 
-    justify-content: space-between; 
-    gap: 20px; /* Optional: spacing between the columns */
+    flex-direction: row;
+    gap: 15px;
+    align-items: center;
 }
 
-/* Main review text container */
-.review-text-container {
-    flex: 2; 
-    display: flex;
-    flex-direction: column;
-    max-width: 50%;
+.review-cover-image {
+    flex-shrink: 0;
+    height: 115px; 
+    width: 150px;
+    overflow: hidden;
+    align-self: center;
+    display: flex;      /* Make this a flex container */
+    align-items: center;  /* Center the image vertically */
+    justify-content: center; /* Center the image horizontally */
 }
-/* Review Right hand side: gauge and rating number */
-.right-sidebar {
-    flex: 1; /* Take up 1 part out of 4 (25%) */
-    display: flex;
-    flex-direction: column;
+
+.review-cover-image img {
+    height: 50px; /* Your desired fixed height */
+    width: 100%;
+    object-fit: cover;
     border-radius: 4px;
-    box-sizing: border-box; /* Include borders in the width calculation */
-    border: 1px solid #4b3b2f;
+}
 
-    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.2), 
-                 2px 0 8px rgba(0, 0, 0, 0.2); /* Shadows for left and right borders */
-    margin: 20px;
-    padding: 10px;
-    max-width: 33%;
+.non-image-review-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0px;
+    min-width: 0;
+    flex: 1;
+}
 
+.review-text-container {
+    flex: 1;
+    min-width: 0;
+    align-self: flex-start;
+}
+
+.review-text-container h1 {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    margin: 0;
+}
+
+.review-text-container p {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;  /* Number of lines before truncating */
+    overflow: hidden;
+    margin: 5px 0;
+}
+
+.right-sidebar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 90px;
+}
+
+
+canvas{
+    height: 50px;
+    width: 80px;
 }
 
 .rating-number-container {
@@ -315,28 +350,24 @@ main {
     text-align: center;
 }
 
-/* .review-text-container a {
-    align-self: flex-start;
-    margin-top: 10px;
-    text-decoration: none;
-    color: #007bff;
-    border: 1px solid #007bff;
-    padding: 5px 10px;
-    border-radius: 4px;
-    transition: background-color 0.3s ease;
-}
-
-.review-text-container a:hover {
-    background-color: #007bff;
-    color: white;
-} */
-
 .gauge-container {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100px;
+    height: auto;
     margin-bottom: 25px;
+}
+
+.cuisine-label-container {
+    text-align: center;
+}
+
+.cuisine-label-container h1{
+    font-size: 12px;
+}
+
+.review-cover-image img {
+    height: 115px;
 }
 
 /* I might want a line here - can't decide */
@@ -479,30 +510,10 @@ footer {
         padding: 8px 0px;
     }
 
-    .review-card-body-container {
-        flex-direction: column; 
-        gap: 10px; 
-        text-align: left;
-    }
 
-    .review-text-container {
-        max-width: 100%; /* Ensure it takes the full width */
-        flex: none; /* Reset flex growth/shrink */
-        text-align: left;
-    }
-
-    .right-sidebar {
-        width: 80%; /* Set a fixed width, or you can adjust this to your preference */
-        flex: none; /* Reset flex growth/shrink */
-        min-width: 200px;
-        margin: 0 auto; /* Center the sidebar in its container */
-        display: flex; /* Enable flexbox for its content */
-        justify-content: center; /* Horizontally center content inside */
-        align-items: center; /* Vertically center content inside */
-    }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 480px) {
     .main-nav {
         display: none;
     }
@@ -583,12 +594,49 @@ footer {
         align-items: flex-start; /* Align elements to the start */
         border: none;
     }
-}
 
-@media (max-width: 480px) {
+    .review-card {
+        margin: 10px 0;
+        padding: 10px 15px;
+        border-radius: 4px;
+        box-sizing: border-box;
+        border: 1px solid rgba(75, 59, 47, 0.5);
+        box-shadow: -2px 0 8px rgba(0, 0, 0, 0.5), 
+                     2px 0 8px rgba(0, 0, 0, 0.5);
+        margin: 10px 0px 25px 0px;
+        padding: 15px 15px;
+        height: 357px;
+    }
 
+    .review-card-body-container {
+        flex-direction: column;
+        gap: 10px;
+    }
 
+    .review-cover-image {
+        width: 100%;
+        height: 200px; /* Adjust height as needed */
+        margin-bottom: 0px;
+    }
 
+    .review-cover-image img {
+        height: 100%;
+        width: 100%;
+    }
+
+    .non-image-review-container {
+        flex-direction: row;
+        width: 100%;
+        gap: 0px;
+    }
+
+    .review-text-container {
+        max-width: 70%; 
+    }
+
+    .right-sidebar {
+        max-width: 30%; 
+    }
 }
 
 

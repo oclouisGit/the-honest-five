@@ -1,6 +1,20 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.21.0/+esm';
 import './dist/gauge.js';
 
+/*
+TODO
+
+Mobile filter button needs an apply filter button or something like that
+There needs to be a way to turn off location filtering
+Need to add images on the review cards for both mobile and desktop
+Need to finish full review page
+Fix how every time you click off a filter (even if it hasn't changed) it will reload the page
+Write a full review for the visuals
+Cache the search query so that when you go back you don't lose your search
+
+
+*/
+
 const supabaseUrl = 'https://ecsqqzuguvdrhlqsbjci.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjc3FxenVndXZkcmhscXNiamNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzE1NDc2NjQsImV4cCI6MjA0NzEyMzY2NH0.GOWZP1KYpl_tAGjH2FL_16UPkkcpyQB17tWQnDbzBik';
 
@@ -145,12 +159,13 @@ async function fetchAndDisplayCategories() {
 
 // Customization for the Gauges made for each review
 let opts = {
-    angle: 0.18, // The span of the gauge arc
-    lineWidth: 0.2, // The line thickness
-    radiusScale: 0.8, // Relative radius
+    angle: 0.15, // The span of the gauge arc
+    lineWidth: 0.3, // The line thickness
+    radiusScale: 1, // Relative radius
+    radius: 10,
     pointer: {
       length: 0.48, //Relative to gauge radius
-      strokeWidth: 0.045, // The thickness
+      strokeWidth: 0.1, // The thickness
       color: '#4b3b2f' // Fill color
     },
     limitMax: false,     // If false, max value increases automatically if value > maxValue
@@ -174,45 +189,35 @@ function displayReviews(reviews) {
             reviewElement.classList.add('review-card');
 
             const reviewSlug = review.slug;
-
-            // Create plusses list
-            const plussesList = review.plusses && review.plusses.length 
-                ? `<div class="plusses">
-                    <ul>${review.plusses.map(plus => `<p>${plus}</p>`).join('')}</ul>
-                </div>`
-                : '';
-
-            // Create minuses list
-            const minusesList = review.minuses && review.minuses.length 
-                ? `<div class="minuses">
-                    <ul>${review.minuses.map(minus => `<p>${minus}</p>`).join('')}</ul>
-                </div>`
-                : '';
             
             // I think this might need to be reserved for the full page article because its hard to fit this vertically while making sense
             // <div class="plus-and-minus-container"> 
             //     ${plussesList}
             //     ${minusesList}
             // </div>
-
             reviewElement.innerHTML = `
                 <div class="review-card-body-container" data-review-slug="${reviewSlug}" data-review-id="${review.id}">
-                    <div class="review-text-container"> 
-                        <h1>${review.title || 'Untitled'}</h1>
-                        <p><strong>Date:</strong> ${review.publish_date ? new Date(review.publish_date).toLocaleDateString() : 'No date'}</p>
-                        <p>${review.summary || 'No summary available'}</p>
+                    <div class="review-cover-image"> 
+                        <img src=${review.cover_image_url || 'No image available'}>
                     </div>
+                    <div class="non-image-review-container"> 
+                        <div class="review-text-container"> 
+                            <h1>${review.title || 'Untitled'}</h1>
+                            <p><strong>Reviewer:</strong> ${review.author}</p>
+                            <p>${review.summary || 'No summary available'}</p>
+                        </div>
 
-                    <div class="right-sidebar">
-                        <div class="rating-number-container"> 
-                            <h1 id=rating-number>${review.rating}/10</h1>
-                        </div>
-                        <div class="gauge-container"> 
-                            <canvas id=gauge-${review.id}></canvas>
-                        </div>
-                        <div class="plus-and-minus-container"> 
-                            ${plussesList}
-                            ${minusesList}
+                        <div class="right-sidebar">
+
+                            <div class="gauge-container"> 
+                                <canvas id=gauge-${review.id}></canvas>
+                            </div>
+                            <div class="rating-number-container"> 
+                                <h1 id=rating-number>${review.rating}/10</h1>
+                            </div>
+                            <div class="cuisine-label-container"> 
+                                <h1 id=cuisine-label>${getCategoryById(category_to_id_map, review.category_id.toString())}</h1>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -247,7 +252,7 @@ function displayReviews(reviews) {
                 filterHeader.classList.add("hidden");
 
                 // Update URL only once
-                history.pushState({ reviewSlug, reviewId }, '', `/reviews/${reviewSlug}`);
+                window.location.hash = `review-${reviewSlug}`;
 
                 console.log(`Navigating to review: ${reviewSlug}, ID: ${reviewId}`);
 
@@ -265,26 +270,29 @@ function displayReviews(reviews) {
     }
 }
 
+function getCategoryById(categoryToIdMap, targetId) {
+    // Find the first entry where the value (UUID) matches the target ID
+    const entry = Object.entries(categoryToIdMap).find(([category, id]) => id === targetId);
+    return entry ? entry[0] : null;
+}
+
 // Function to handle review navigation
 function handleReviewNavigation() {
-    const path = window.location.pathname;
-    const match = path.match(/^\/reviews\/(.+)$/);
-
-    if (match) {
-        const reviewSlug = match[1];
-        // Here you would typically fetch the full review details
-        // For now, we'll just log the slug
-        console.log(`Loaded review page for slug: ${reviewSlug}`);
-        loadFullReview(reviewSlug);
-    }
+    const hash = window.location.hash;
     const reviewListContainer = document.getElementById("review-list-container");
     const filterHeader = document.querySelector(".filter-header");
 
-    // If not on a review page, show the reviews list
-    if (!path.startsWith('/reviews/')) {
-        // Ensure reviews list and filter header are visible
+    if (hash && hash.startsWith('#review-')) {
+        // Extract the slug from the hash
+        const reviewSlug = hash.replace('#review-', '');
+        console.log(`Loading review for slug: ${reviewSlug}`);
+        loadFullReview(reviewSlug);
+    } else {
+        // Show reviews list if no hash or not a review hash
         reviewListContainer.classList.remove("hidden");
         filterHeader.classList.remove("hidden");
+        const fullReviewContainer = document.getElementById('full-review-container');
+        fullReviewContainer.classList.add("hidden");
     }
 }
 
@@ -297,25 +305,59 @@ async function loadFullReview(reviewSlug) {
             .eq('slug', reviewSlug)
             .single();
 
-        if (error) throw error
+        if (error) throw error;
+
+        console.log('got this review from the server', review.title);
 
         // Render full review content
-        renderFullReview(review)
+        renderFullReview(review);
+
+        // Hide the list view
+        const reviewListContainer = document.getElementById("review-list-container");
+        const filterHeader = document.querySelector(".filter-header");
+        reviewListContainer.classList.add("hidden");
+        filterHeader.classList.add("hidden");
     } catch (error) {
-        console.error('Error loading review:', error)
+        console.error('Error loading review:', error);
         // Handle error (e.g., show error message)
     }
 }
 
 function renderFullReview(review) {
     // Create and populate full review view
-    const fullReviewContainer = document.getElementById('full-review-container')
+    const fullReviewContainer = document.getElementById('full-review-container');
+
+    // I need to get all the other reviews for their gauges
+    // I also want to have those all loaded but with the class "hidden"
+    // Then I need to conditionally make all those gauges
+    // I will show this first reviewer first
+    // If ther is only one review then I need to figure out what to do because this will be the primary way people will see this
+    // Maybe I make a row like nerd wallet where I have the pros and cons list again with the gauge on the right shown almost like a card right below the summary
+    // then the full review below that - for MVP I should get one review working first
     fullReviewContainer.innerHTML = `
-        <h1>${review.title}</h1>
-        <p>${review.full_content}</p>
-        <!-- Add more details as needed -->
+        <h1 class="article-title">${review.title}</h1>
+
+        <div class="review-cover-image"> 
+            <img src=${review.cover_image_url || 'No image available'}>
+        </div>
+
+        <p class="full-review-summary">${review.summary}</p>
+
+        <div class="full-review-gauge-container"> 
+            <canvas id=full-review-gauge-${review.id}></canvas>
+        </div>
+
+        <p class="full-review-summary">${review.content}</p>
     `
-    // Show full review container, hide others
+
+    var target = document.getElementById(`full-review-gauge-${review.id}`);
+    target.classList.remove('hidden');
+    var gauge = new Gauge(target).setOptions(opts);
+    gauge.maxValue = 10;
+    gauge.setMinValue(0); 
+    gauge.set(review.rating);
+    gauge.animationSpeed = 32;
+    fullReviewContainer.classList.remove('hidden');
 }
 
 // Add event listener for browser back/forward navigation
