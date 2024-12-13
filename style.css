@@ -3,10 +3,11 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    font-family: Georgia, 'Times New Roman', Times, serif;
 }
 
 body {
-    font-family: Arial, sans-serif;
+    font-family: Georgia, 'Times New Roman', Times, serif;
     background-color: #f8f8f8;
     display: flex;
     flex-direction: column;
@@ -182,6 +183,7 @@ main {
                  2px 0 8px rgba(0, 0, 0, 0.2); 
 }
 
+
 .ratings-slider-container {
     position: relative;
     width: 100%;
@@ -278,6 +280,7 @@ main {
     flex-direction: row;
     gap: 15px;
     align-items: center;
+    cursor: pointer;
 }
 
 .review-cover-image {
@@ -400,6 +403,114 @@ canvas{
 .minuses p {
     background-color: rgba(255, 0, 0, 0.5);
 }
+
+
+/* Full Article Styles */
+
+#full-review-container{
+    margin: 10px 0;
+    padding: 10px 15px;
+    border-radius: 8px;
+    box-sizing: border-box;
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1), 
+                 2px 0 8px rgba(0, 0, 0, 0.1);
+    margin: 10px 0px 25px 0px;
+    padding: 15px 15px;
+}
+
+.article-title {
+    text-align: center;
+    font-size: 2.5rem;
+    margin: 2px 0;
+    font-weight: 700;
+    height: auto;
+}
+
+.full-review-cover-image {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 90%;
+    height: auto;
+    margin: 10px auto;  /* Changed from '10px 0' to '10px auto' to center the container */
+    overflow: hidden;
+    position: relative;
+}
+
+.full-review-cover-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+    max-height: 500px;
+    border-radius: 8px;
+}
+
+.full-review-summary {
+    text-align: center;
+    font-size: 1.2rem;
+    line-height: 1.6;
+    color: #555;
+    margin: 1rem 0 0 0;
+    max-width: 800px; /* For better readability */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.gauge-card-container {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 2rem auto;
+    max-width: 400px; /* Adjust based on your gauge size */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+hr.review-divider {
+    width: 85%;
+    margin: 50px auto;
+    border: none;
+    border-top: 1px solid #4b3b2f;  /* or any color you prefer */
+}
+
+.full-review-content {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: #333;
+    margin: 2rem 0;
+    max-width: 800px; /* For better readability */
+    margin-left: auto;
+    margin-right: auto;
+    text-align: left;
+}
+
+.section-with-image-image {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 30%;
+    height: auto;
+    margin: 10px auto;  /* Changed from '10px 0' to '10px auto' to center the container */
+    overflow: hidden;
+    position: relative;
+}
+
+.image-section-image {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 60%;
+    height: auto;
+    margin: 10px auto;  /* Changed from '10px 0' to '10px auto' to center the container */
+    overflow: hidden;
+    position: relative;
+}
+
+.review-sections {
+    padding: 0px 25px;
+}
+
 
 /* Used for the categories dropdown menu */
 .selected{
@@ -636,6 +747,17 @@ footer {
 
     .right-sidebar {
         max-width: 30%; 
+    }
+
+    #full-review-container {
+        border: none;
+        box-shadow: none;
+        padding: 0px;
+        margin: 0px;
+    }
+
+    .review-sections {
+        padding: 0px 5px;
     }
 }
 
