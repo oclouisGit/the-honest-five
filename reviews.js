@@ -1,6 +1,25 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.21.0/+esm';
 import './dist/gauge.js';
 
+/*
+
+<svg viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Main H structure -->
+  <path d="M40 30 L40 170" stroke="#4b3b2f" stroke-width="2"/>
+  <path d="M90 30 L90 170" stroke="#4b3b2f" stroke-width="2"/>
+  <!-- Center horizontal -->
+  <path d="M40 100 L90 100" stroke="#4b3b2f" stroke-width="2"/>
+  <!-- Extension lines -->
+  <path d="M40 31 L60 31" stroke="#4b3b2f" stroke-width="2"/>
+  <path d="M65 169 L90 169" stroke="#4b3b2f" stroke-width="2"/>
+  <!-- Text -->
+</svg>
+
+TODO
+
+Write a full review for the visuals
+*/
+
 const supabaseUrl = 'https://ecsqqzuguvdrhlqsbjci.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjc3FxenVndXZkcmhscXNiamNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzE1NDc2NjQsImV4cCI6MjA0NzEyMzY2NH0.GOWZP1KYpl_tAGjH2FL_16UPkkcpyQB17tWQnDbzBik';
 
@@ -145,12 +164,13 @@ async function fetchAndDisplayCategories() {
 
 // Customization for the Gauges made for each review
 let opts = {
-    angle: 0.18, // The span of the gauge arc
-    lineWidth: 0.2, // The line thickness
-    radiusScale: 0.8, // Relative radius
+    angle: 0.15, // The span of the gauge arc
+    lineWidth: 0.3, // The line thickness
+    radiusScale: 1, // Relative radius
+    radius: 10,
     pointer: {
       length: 0.48, //Relative to gauge radius
-      strokeWidth: 0.045, // The thickness
+      strokeWidth: 0.1, // The thickness
       color: '#4b3b2f' // Fill color
     },
     limitMax: false,     // If false, max value increases automatically if value > maxValue
@@ -174,45 +194,35 @@ function displayReviews(reviews) {
             reviewElement.classList.add('review-card');
 
             const reviewSlug = review.slug;
-
-            // Create plusses list
-            const plussesList = review.plusses && review.plusses.length 
-                ? `<div class="plusses">
-                    <ul>${review.plusses.map(plus => `<p>${plus}</p>`).join('')}</ul>
-                </div>`
-                : '';
-
-            // Create minuses list
-            const minusesList = review.minuses && review.minuses.length 
-                ? `<div class="minuses">
-                    <ul>${review.minuses.map(minus => `<p>${minus}</p>`).join('')}</ul>
-                </div>`
-                : '';
             
             // I think this might need to be reserved for the full page article because its hard to fit this vertically while making sense
             // <div class="plus-and-minus-container"> 
             //     ${plussesList}
             //     ${minusesList}
             // </div>
-
             reviewElement.innerHTML = `
                 <div class="review-card-body-container" data-review-slug="${reviewSlug}" data-review-id="${review.id}">
-                    <div class="review-text-container"> 
-                        <h1>${review.title || 'Untitled'}</h1>
-                        <p><strong>Date:</strong> ${review.publish_date ? new Date(review.publish_date).toLocaleDateString() : 'No date'}</p>
-                        <p>${review.summary || 'No summary available'}</p>
+                    <div class="review-cover-image"> 
+                        <img src=${review.cover_image_url || 'No image available'}>
                     </div>
+                    <div class="non-image-review-container"> 
+                        <div class="review-text-container"> 
+                            <h1>${review.title || 'Untitled'}</h1>
+                            <p><strong>Reviewer:</strong> ${review.author}</p>
+                            <p>${review.summary || 'No summary available'}</p>
+                        </div>
 
-                    <div class="right-sidebar">
-                        <div class="rating-number-container"> 
-                            <h1 id=rating-number>${review.rating}/10</h1>
-                        </div>
-                        <div class="gauge-container"> 
-                            <canvas id=gauge-${review.id}></canvas>
-                        </div>
-                        <div class="plus-and-minus-container"> 
-                            ${plussesList}
-                            ${minusesList}
+                        <div class="right-sidebar">
+
+                            <div class="gauge-container"> 
+                                <canvas id=gauge-${review.id}></canvas>
+                            </div>
+                            <div class="rating-number-container"> 
+                                <h1 id=rating-number>${review.rating}/10</h1>
+                            </div>
+                            <div class="cuisine-label-container"> 
+                                <h1 id=cuisine-label>${getCategoryById(category_to_id_map, review.category_id.toString())}</h1>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -247,7 +257,7 @@ function displayReviews(reviews) {
                 filterHeader.classList.add("hidden");
 
                 // Update URL only once
-                history.pushState({ reviewSlug, reviewId }, '', `/reviews/${reviewSlug}`);
+                window.location.hash = `review-${reviewSlug}`;
 
                 console.log(`Navigating to review: ${reviewSlug}, ID: ${reviewId}`);
 
@@ -265,62 +275,171 @@ function displayReviews(reviews) {
     }
 }
 
+function getCategoryById(categoryToIdMap, targetId) {
+    // Find the first entry where the value (UUID) matches the target ID
+    const entry = Object.entries(categoryToIdMap).find(([category, id]) => id === targetId);
+    return entry ? entry[0] : null;
+}
+
 // Function to handle review navigation
 function handleReviewNavigation() {
-    const path = window.location.pathname;
-    const match = path.match(/^\/reviews\/(.+)$/);
-
-    if (match) {
-        const reviewSlug = match[1];
-        // Here you would typically fetch the full review details
-        // For now, we'll just log the slug
-        console.log(`Loaded review page for slug: ${reviewSlug}`);
-        loadFullReview(reviewSlug);
-    }
+    const hash = window.location.hash;
     const reviewListContainer = document.getElementById("review-list-container");
     const filterHeader = document.querySelector(".filter-header");
 
-    // If not on a review page, show the reviews list
-    if (!path.startsWith('/reviews/')) {
-        // Ensure reviews list and filter header are visible
+    if (hash && hash.startsWith('#review-')) {
+        // Extract the slug from the hash
+        const reviewSlug = hash.replace('#review-', '');
+        console.log(`Loading review for slug: ${reviewSlug}`);
+        loadFullReview(reviewSlug);
+    } else {
+        // Show reviews list if no hash or not a review hash
         reviewListContainer.classList.remove("hidden");
         filterHeader.classList.remove("hidden");
+        const fullReviewContainer = document.getElementById('full-review-container');
+        fullReviewContainer.classList.add("hidden");
     }
 }
 
 async function loadFullReview(reviewSlug) {
     try {
-        // Fetch full review details from Supabase
-        const { data: review, error } = await supabase
+        // Fetch both review and its sections
+        const { data: review, error: reviewError } = await supabase
             .from('reviews')
             .select('*')
             .eq('slug', reviewSlug)
             .single();
 
-        if (error) throw error
+        if (reviewError) throw reviewError;
+
+        // Fetch sections for this review, ordered by their position
+        const { data: sections, error: sectionsError } = await supabase
+            .from('sections')
+            .select('*')
+            .eq('review_id', review.id)
+            .order('order', { ascending: true });
+
+        if (sectionsError) throw sectionsError;
+
+        console.log('got this review from the server', review.title);
 
         // Render full review content
-        renderFullReview(review)
+        renderFullReview(review, sections);
+
+        // Hide the list view
+        const reviewListContainer = document.getElementById("review-list-container");
+        const filterHeader = document.querySelector(".filter-header");
+        reviewListContainer.classList.add("hidden");
+        filterHeader.classList.add("hidden");
     } catch (error) {
-        console.error('Error loading review:', error)
+        console.error('Error loading review:', error);
         // Handle error (e.g., show error message)
     }
 }
 
-function renderFullReview(review) {
+function renderFullReview(review, sections) {
     // Create and populate full review view
-    const fullReviewContainer = document.getElementById('full-review-container')
-    fullReviewContainer.innerHTML = `
-        <h1>${review.title}</h1>
-        <p>${review.full_content}</p>
-        <!-- Add more details as needed -->
+    const fullReviewContainer = document.getElementById('full-review-container');
+
+    // I need to get all the other reviews for their gauges
+    // I also want to have those all loaded but with the class "hidden"
+    // Then I need to conditionally make all those gauges
+    // I will show this first reviewer first
+    // If ther is only one review then I need to figure out what to do because this will be the primary way people will see this
+    // Maybe I make a row like nerd wallet where I have the pros and cons list again with the gauge on the right shown almost like a card right below the summary
+    // then the full review below that - for MVP I should get one review working first
+    let reviewHTML = `
+        <h1 class="article-title">${review.title}</h1>
+
+        <div class="full-review-cover-image"> 
+            <img src=${review.cover_image_url || 'No image available'}>
+        </div>
+
+        <div class="gauge-card-container"> 
+
+            <div class="full-review-gauge-container"> 
+                <canvas id=full-review-gauge-${review.id}></canvas>
+            </div>
+
+            <div class="rating-number-container"> 
+                <h1 id=rating-number>${review.rating}/10</h1>
+            </div>
+
+            <div class="cuisine-label-container"> 
+                <h1 id=cuisine-label>${getCategoryById(category_to_id_map, review.category_id.toString())}</h1>
+            </div>
+            
+            <p class="full-review-summary">${review.summary}</p>
+
+        </div>
+
+        <hr class="review-divider">
+
+        <div class="review-sections">
     `
-    // Show full review container, hide others
+    // Add each section
+    sections.forEach(section => {
+        // Add section heading if it exists
+        if (section.heading) {
+            reviewHTML += `<h2 class="section-heading">${section.heading}</h2>`;
+        }
+
+        // Create section content based on type
+        if (section.image_url && section.text) {
+            // Section with both image and text
+            reviewHTML += `
+                <div class="section-with-image-container">
+                    <img src="${section.image_url}" alt="${section.heading || 'Review section image'}" class="section-with-image-image">
+                    <p class="section-text">${section.text}</p>
+                    
+                </div>
+            `;
+        } else if (section.image_url) {
+            // Image-only section
+            reviewHTML += `
+                <div class="image-section-container">
+                    <img src="${section.image_url}" alt="${section.heading || 'Review section image'}" class="image-section-image">
+                </div>
+            `;
+        } else if (section.text) {
+            // Text-only section
+            reviewHTML += `<p class="text-section-text">${section.text}</p>`;
+        }
+    });
+
+    reviewHTML += '</div>'; // Close review-sections div
+    
+    fullReviewContainer.innerHTML = reviewHTML;
+
+    initializeGauge(review);
+
+    fullReviewContainer.classList.remove('hidden');
+}
+
+// Function to handle gauge initialization
+function initializeGauge(review) {
+    // Wait briefly to ensure DOM is ready
+    setTimeout(() => {
+        const target = document.getElementById(`full-review-gauge-${review.id}`);
+        if (target) {
+            target.classList.remove('hidden');
+            const gauge = new Gauge(target).setOptions(opts);
+            gauge.maxValue = 10;
+            gauge.setMinValue(0); 
+            gauge.set(review.rating);
+            gauge.animationSpeed = 32;
+        }
+    }, 0);
 }
 
 // Add event listener for browser back/forward navigation
 window.addEventListener('popstate', handleReviewNavigation);
 
+const arraysHaveSameContents = (arr1, arr2) => {
+    if (arr1.length !== arr2.length) return false;
+    const set1 = new Set(arr1);
+    return arr2.every(item => set1.has(item));
+};
 
 async function searchReviews(
     searchTerm = '',          // Default to an empty string
@@ -329,7 +448,26 @@ async function searchReviews(
     user_longitude = null,          // Default to null
     ratingMin = 0,            // Default to 0
     ratingMax = 10            // Default to 10
-    ) {    try {
+    ) {    
+        // First check to see if this is the same search we did last time
+        if (
+            arraysHaveSameContents(category_ids, previous_category_ids) && 
+            search_entry === previous_search_entry && 
+            user_latitude === previous_user_latitude && 
+            user_longitude === previous_user_longitude && 
+            ratingMax === previous_ratingMax && 
+            ratingMin === previous_ratingMin 
+        ) {
+            previous_category_ids = [...category_ids];
+            previous_search_entry = search_entry;
+            previous_user_latitude = user_latitude;
+            previous_user_longitude = user_longitude;
+            previous_ratingMax = ratingMax;
+            previous_ratingMin = ratingMin;
+            return;
+        }
+
+        try {
         const container = document.getElementById('review-list-container');
         if (!container) {
         throw new Error('Reviews container not found in DOM');
@@ -419,6 +557,14 @@ async function searchReviews(
             filledFilterButton.classList.remove("hidden");
         }
 
+        // Set these values so we can check next time
+        previous_category_ids = [...category_ids];
+        previous_search_entry = search_entry;
+        previous_user_latitude = user_latitude;
+        previous_user_longitude = user_longitude;
+        previous_ratingMax = ratingMax;
+        previous_ratingMin = ratingMin;
+
         // If location-based reviews were fetched, ensure they're in the original order
         // I don't know why I had to do this but nothing else I did could get this to do what I wanted
         if (reviewIds !== null && data) {
@@ -446,6 +592,12 @@ let user_latitude = null;
 let user_longitude = null;
 let ratingMax = 10;
 let ratingMin = 0;
+let previous_category_ids = [];
+let previous_search_entry = '';
+let previous_user_latitude = null;
+let previous_user_longitude = null;
+let previous_ratingMax = 10;
+let previous_ratingMin = 0;
 
 let reviews_list = fetchRecentReviews();
 fetchAndDisplayCategories();
@@ -471,10 +623,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const cuisineDropdownButton = document.getElementById("cuisine-dropdown-button");
 
 
-
-    // Clicking Cuisine filter should open the dropdown
+    // Clicking Cuisine filter should toggle the dropdown
     cuisineDropdownToggle.addEventListener("click", () => {
-        cuisineDropdownContent.classList.remove("hidden");
+        if (cuisineDropdownContent.classList.contains("hidden")) {
+            cuisineDropdownContent.classList.remove("hidden");
+        } else {
+            cuisineDropdownContent.classList.add("hidden");
+            searchReviews(search_entry, category_ids, user_latitude, user_longitude, ratingMin, ratingMax);
+        }
     });
 
     // Clicking on the search button shows the search button
@@ -507,11 +663,17 @@ document.addEventListener('DOMContentLoaded', () => {
             searchToggleButton.classList.remove("hidden");
         }
 
-        // Clicking off the dropdown menu should close it, but not when clicking a button inside the dropdown
-        if (e.target !== cuisineDropdownContent && e.target !== cuisineDropdownToggle && e.target !== document.getElementById("cuisine-dropdown-button") && !cuisineDropdownContent.contains(e.target) && !cuisineDropdownContent.classList.contains("hidden") ) {
+    // Clicking off the dropdown menu should close it, but not when clicking a button inside the dropdown
+    document.addEventListener("click", (e) => {
+        if (e.target !== cuisineDropdownContent && 
+            e.target !== cuisineDropdownToggle && 
+            e.target !== document.getElementById("cuisine-dropdown-button") && 
+            !cuisineDropdownContent.contains(e.target) && 
+            !cuisineDropdownContent.classList.contains("hidden")) {
             cuisineDropdownContent.classList.add("hidden");
             searchReviews(search_entry, category_ids, user_latitude, user_longitude, ratingMin, ratingMax);
         }
+    });
 
     });
 
@@ -596,34 +758,48 @@ document.addEventListener('DOMContentLoaded', () => {
     const getLocationButton = document.getElementById("get-location-button");
 
     getLocationButton.addEventListener('click', () => {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    user_latitude = position.coords.latitude;
-                    user_longitude = position.coords.longitude;
-                    searchReviews(search_entry, category_ids, user_latitude, user_longitude, ratingMin, ratingMax);
-                    console.log(`Latitude: ${user_latitude}, Longitude: ${user_longitude}`);
-                },
-                (error) => {
-                    switch (error.code) {
-                        case error.PERMISSION_DENIED:
-                            display.textContent = "User denied the request for Geolocation.";
-                            break;
-                        case error.POSITION_UNAVAILABLE:
-                            display.textContent = "Location information is unavailable.";
-                            break;
-                        case error.TIMEOUT:
-                            display.textContent = "The request to get user location timed out.";
-                            break;
-                        case error.UNKNOWN_ERROR:
-                            display.textContent = "An unknown error occurred.";
-                            break;
+        // If the use has no location status yet
+        // Get location from browser and update button to reflect that if it was successful
+        if(user_latitude === null && user_longitude === null){
+            getLocationButton.style.outline = '1px solid #f8f8f8';
+            getLocationButton.style.outlineOffset = '-4px';
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        user_latitude = position.coords.latitude;
+                        user_longitude = position.coords.longitude;
+                        searchReviews(search_entry, category_ids, user_latitude, user_longitude, ratingMin, ratingMax);
+                        console.log(`Latitude: ${user_latitude}, Longitude: ${user_longitude}`);
+                    },
+                    (error) => {
+                        switch (error.code) {
+                            case error.PERMISSION_DENIED:
+                                display.textContent = "User denied the request for Geolocation.";
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                display.textContent = "Location information is unavailable.";
+                                break;
+                            case error.TIMEOUT:
+                                display.textContent = "The request to get user location timed out.";
+                                break;
+                            case error.UNKNOWN_ERROR:
+                                display.textContent = "An unknown error occurred.";
+                                break;
+                        }
                     }
-                }
-            );
+                );
+            } else {
+                display.textContent = "Geolocation is not supported by this browser.";
+            }
         } else {
-            display.textContent = "Geolocation is not supported by this browser.";
+            user_latitude = null;
+            user_longitude = null;
+            getLocationButton.style.outline = 'none';
+            getLocationButton.style.outlineOffset = '0px';
+            searchReviews(search_entry, category_ids, user_latitude, user_longitude, ratingMin, ratingMax);
         }
+        
+
     });
 
 });
