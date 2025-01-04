@@ -298,6 +298,7 @@ function handleReviewNavigation() {
         filterHeader.classList.remove("hidden");
         const fullReviewContainer = document.getElementById('full-review-container');
         fullReviewContainer.classList.add("hidden");
+        outlinedFilterButton.classList.remove("hidden");
     }
 }
 
@@ -331,6 +332,8 @@ async function loadFullReview(reviewSlug) {
         const filterHeader = document.querySelector(".filter-header");
         reviewListContainer.classList.add("hidden");
         filterHeader.classList.add("hidden");
+        outlinedFilterButton.classList.add("hidden");
+        filledFilterButton.classList.add("hidden");
     } catch (error) {
         console.error('Error loading review:', error);
         // Handle error (e.g., show error message)
@@ -431,6 +434,7 @@ function initializeGauge(review) {
         }
     }, 0);
 }
+
 
 // Add event listener for browser back/forward navigation
 window.addEventListener('popstate', handleReviewNavigation);
@@ -584,6 +588,11 @@ async function searchReviews(
         }
     }
 }
+
+
+
+
+
 
 // This stores the things about the query that we send to the backend to get the reviews
 let category_ids = [];
