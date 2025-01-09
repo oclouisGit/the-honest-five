@@ -281,22 +281,26 @@ function getCategoryById(categoryToIdMap, targetId) {
     return entry ? entry[0] : null;
 }
 
-// Function to handle review navigation
 function handleReviewNavigation() {
     const hash = window.location.hash;
     const reviewListContainer = document.getElementById("review-list-container");
     const filterHeader = document.querySelector(".filter-header");
+    const fullReviewContainer = document.getElementById('full-review-container');
 
     if (hash && hash.startsWith('#review-')) {
-        // Extract the slug from the hash
+        // Hide list view and filter immediately
+        reviewListContainer.classList.add("hidden");
+        filterHeader.classList.add("hidden");
+        outlinedFilterButton.classList.add("hidden");
+        filledFilterButton.classList.add("hidden");
+        fullReviewContainer.classList.remove("hidden"); // Show the full review container
+
+        // Extract slug and load review
         const reviewSlug = hash.replace('#review-', '');
-        console.log(`Loading review for slug: ${reviewSlug}`);
         loadFullReview(reviewSlug);
     } else {
-        // Show reviews list if no hash or not a review hash
         reviewListContainer.classList.remove("hidden");
         filterHeader.classList.remove("hidden");
-        const fullReviewContainer = document.getElementById('full-review-container');
         fullReviewContainer.classList.add("hidden");
         outlinedFilterButton.classList.remove("hidden");
     }
@@ -304,6 +308,8 @@ function handleReviewNavigation() {
 
 async function loadFullReview(reviewSlug) {
     try {
+        const fullReviewContainer = document.getElementById('full-review-container');
+        
         // Fetch both review and its sections
         const { data: review, error: reviewError } = await supabase
             .from('reviews')
@@ -322,21 +328,11 @@ async function loadFullReview(reviewSlug) {
 
         if (sectionsError) throw sectionsError;
 
-        console.log('got this review from the server', review.title);
-
         // Render full review content
         renderFullReview(review, sections);
-
-        // Hide the list view
-        const reviewListContainer = document.getElementById("review-list-container");
-        const filterHeader = document.querySelector(".filter-header");
-        reviewListContainer.classList.add("hidden");
-        filterHeader.classList.add("hidden");
-        outlinedFilterButton.classList.add("hidden");
-        filledFilterButton.classList.add("hidden");
     } catch (error) {
         console.error('Error loading review:', error);
-        // Handle error (e.g., show error message)
+        fullReviewContainer.innerHTML = '<p>Error loading review</p>';
     }
 }
 
@@ -616,6 +612,7 @@ fetchAndDisplayCategories();
 // Wait for DOM to be ready
 document.addEventListener('DOMContentLoaded', () => {
     handleReviewNavigation();
+
 
     console.log('category_to_id_map:', category_to_id_map);
     console.log('category_ids:', category_ids);
