@@ -6,7 +6,7 @@
     font-family: Georgia, 'Times New Roman', Times, serif;
 }
 
-body {
+html, body {
     font-family: Georgia, 'Times New Roman', Times, serif;
     background-color: #f8f8f8;
     display: flex;
@@ -14,6 +14,11 @@ body {
     min-height: 100vh;
     justify-content: space-between;
     color: #4b3b2f;
+    height: 100%;
+}
+
+main {
+    height: 100%;
 }
 
 h1 {
@@ -692,6 +697,15 @@ p.philosophy-question {
 .philosophy-rating-questions p{
     margin: 0px;
 }
+
+/* ====== \/MAP\/ ====== */
+
+#map {
+    height: 100%;
+    width: 100%;
+}
+
+/* ====== /\MAP/\ ====== */
 
 /* ====== Responsive Styles ====== */
 @media (max-width: 700px) {
