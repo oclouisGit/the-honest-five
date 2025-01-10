@@ -201,7 +201,7 @@ function displayReviews(reviews) {
             //     ${minusesList}
             // </div>
             reviewElement.innerHTML = `
-                <div class="review-card-body-container" data-review-slug="${reviewSlug}" data-review-id="${review.id}">
+                <div class="review-card-body-container" data-review-slug="${reviewSlug}" data-review-id="${review.id}" data-review-author="${review.author}">
                     <div class="review-cover-image"> 
                         <img src=${review.cover_image_url || 'No image available'}>
                     </div>
@@ -243,24 +243,20 @@ function displayReviews(reviews) {
             gauge.animationSpeed = 32;
         });
 
-        // Use event delegation instead of multiple individual listeners
         reviewsContainer.addEventListener('click', (event) => {
             const reviewCard = event.target.closest('.review-card-body-container');
             if (reviewCard) {
                 const reviewSlug = reviewCard.dataset.reviewSlug;
-                const reviewId = reviewCard.dataset.reviewId;
-
+                const author = reviewCard.dataset.reviewAuthor.replace(/\s+/g, '-').toLowerCase();
+                
                 // Hide current view
                 const reviewCardBodyContainer = document.getElementById("review-list-container");
                 const filterHeader = document.querySelector(".filter-header");
                 reviewCardBodyContainer.classList.add("hidden");
                 filterHeader.classList.add("hidden");
-
-                // Update URL only once
-                window.location.hash = `review-${reviewSlug}`;
-
-                console.log(`Navigating to review: ${reviewSlug}, ID: ${reviewId}`);
-
+        
+                window.location.hash = `review-${reviewSlug}--${author}`;
+        
                 handleReviewNavigation();
             }
         });
@@ -293,11 +289,14 @@ function handleReviewNavigation() {
         filterHeader.classList.add("hidden");
         outlinedFilterButton.classList.add("hidden");
         filledFilterButton.classList.add("hidden");
-        fullReviewContainer.classList.remove("hidden"); // Show the full review container
+        fullReviewContainer.classList.remove("hidden");
 
-        // Extract slug and load review
-        const reviewSlug = hash.replace('#review-', '');
-        loadFullReview(reviewSlug);
+        const [slugPart, authorPart] = hash.replace('#review-', '').split('--');
+        const reviewSlug = slugPart;
+        // Convert dashed author name back to spaces for database query
+        const reviewAuthor = authorPart ? authorPart.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '';
+
+        loadFullReview(reviewSlug, reviewAuthor);
     } else {
         reviewListContainer.classList.remove("hidden");
         filterHeader.classList.remove("hidden");
@@ -306,113 +305,297 @@ function handleReviewNavigation() {
     }
 }
 
-async function loadFullReview(reviewSlug) {
+// async function loadFullReview(reviewSlug) {
+//     try {
+//         const fullReviewContainer = document.getElementById('full-review-container');
+        
+//         // Fetch both review and its sections
+//         const { data: review, error: reviewError } = await supabase
+//             .from('reviews')
+//             .select('*')
+//             .eq('slug', reviewSlug)
+//             .single();
+
+//         if (reviewError) throw reviewError;
+
+//         // Fetch sections for this review, ordered by their position
+//         const { data: sections, error: sectionsError } = await supabase
+//             .from('sections')
+//             .select('*')
+//             .eq('review_id', review.id)
+//             .order('order', { ascending: true });
+
+//         if (sectionsError) throw sectionsError;
+
+//         // Render full review content
+//         renderFullReview(review, sections);
+//     } catch (error) {
+//         console.error('Error loading review:', error);
+//         fullReviewContainer.innerHTML = '<p>Error loading review</p>';
+//     }
+// }
+
+async function loadFullReview(reviewSlug, reviewAuthor = null) {
     try {
         const fullReviewContainer = document.getElementById('full-review-container');
-        
-        // Fetch both review and its sections
-        const { data: review, error: reviewError } = await supabase
+        if (!fullReviewContainer) {
+            console.error('Full review container not found');
+            return;
+        }
+
+        // Fetch all reviews with this slug
+        const { data: reviews, error: reviewsError } = await supabase
             .from('reviews')
             .select('*')
-            .eq('slug', reviewSlug)
-            .single();
+            .eq('slug', reviewSlug);
 
-        if (reviewError) throw reviewError;
+        if (reviewsError) throw reviewsError;
+        
+        if (!reviews || reviews.length === 0) {
+            fullReviewContainer.innerHTML = '<p>Review not found</p>';
+            return;
+        }
 
-        // Fetch sections for this review, ordered by their position
+        // Fetch sections for all reviews
+        const reviewIds = reviews.map(review => review.id);
         const { data: sections, error: sectionsError } = await supabase
             .from('sections')
             .select('*')
-            .eq('review_id', review.id)
+            .in('review_id', reviewIds)
             .order('order', { ascending: true });
 
         if (sectionsError) throw sectionsError;
 
-        // Render full review content
-        renderFullReview(review, sections);
+        // Group sections by review_id
+        const sectionsByReview = sections.reduce((acc, section) => {
+            if (!acc[section.review_id]) {
+                acc[section.review_id] = [];
+            }
+            acc[section.review_id].push(section);
+            return acc;
+        }, {});
+
+        // Determine initial active review based on author if provided
+        let initialReviewId;
+        if (reviewAuthor) {
+            // Normalize the comparison by converting both to lowercase
+            const authorReview = reviews.find(review => 
+                review.author.toLowerCase() === reviewAuthor.toLowerCase()
+            );
+            initialReviewId = authorReview ? authorReview.id : reviews[0].id;
+        } else {
+            initialReviewId = reviews[0].id;
+        }
+
+        // Render full review content with tabs if there are multiple reviews
+        renderFullReview(reviews, sectionsByReview, initialReviewId);
+
+        // Update URL if author isn't in it yet
+        if (!reviewAuthor) {
+            const activeReview = reviews.find(review => review.id === initialReviewId);
+            const authorSlug = activeReview.author.replace(/\s+/g, '-').toLowerCase();
+            window.location.hash = `review-${reviewSlug}--${authorSlug}`;
+        }
     } catch (error) {
         console.error('Error loading review:', error);
-        fullReviewContainer.innerHTML = '<p>Error loading review</p>';
+        const fullReviewContainer = document.getElementById('full-review-container');
+        if (fullReviewContainer) {
+            fullReviewContainer.innerHTML = `<p>Error loading review: ${error.message}</p>`;
+        }
     }
 }
 
-function renderFullReview(review, sections) {
-    // Create and populate full review view
+function renderFullReview(reviews, sectionsByReview, initialReviewId) {
     const fullReviewContainer = document.getElementById('full-review-container');
+    if (!fullReviewContainer) return;
 
-    // I need to get all the other reviews for their gauges
-    // I also want to have those all loaded but with the class "hidden"
-    // Then I need to conditionally make all those gauges
-    // I will show this first reviewer first
-    // If ther is only one review then I need to figure out what to do because this will be the primary way people will see this
-    // Maybe I make a row like nerd wallet where I have the pros and cons list again with the gauge on the right shown almost like a card right below the summary
-    // then the full review below that - for MVP I should get one review working first
+    const hasMultipleReviews = reviews.length > 1;
+    const gauges = {}; // Store gauge instances
+    
     let reviewHTML = `
-        <h1 class="article-title">${review.title}</h1>
+        <h1 class="article-title">${reviews[0].title}</h1>
 
         <div class="full-review-cover-image"> 
-            <img src=${review.cover_image_url || 'No image available'}>
-        </div>
+            <img src="${reviews[0].cover_image_url || 'No image available'}" alt="${reviews[0].title}">
+        </div>`;
 
-        <div class="gauge-card-container"> 
+        if (hasMultipleReviews) {
+            reviewHTML += `
+            <div class="tab-container" id="reviewTabs">
+                ${reviews.map((review) => `
+                    <button class="tab ${review.id === initialReviewId ? 'active' : ''}" 
+                            data-review-id="${review.id}"
+                            data-author="${review.author}">
+                        <div class="tab-gauge-container">
+                            <canvas id="tab-gauge-${review.id}"></canvas>
+                            <div class="tab-rating">${review.rating}/10</div>
+                        </div>
+                        <div class="tab-author">${review.author}</div>
+                    </button>
+                `).join('')}
+            </div>`;
 
-            <div class="full-review-gauge-container"> 
-                <canvas id=full-review-gauge-${review.id}></canvas>
-            </div>
+            // Create container for all review contents
+            reviewHTML += `<div id="reviewContents">`;
 
-            <div class="rating-number-container"> 
-                <h1 id=rating-number>${review.rating}/10</h1>
-            </div>
+            // Add each review's content (initially hidden except for active one)
+            reviews.forEach(review => {
+                const sections = sectionsByReview[review.id] || [];
+                const isActive = review.id === initialReviewId;
+                
+                reviewHTML += `
+                    <div class="review-content ${isActive ? 'active' : 'hidden'}" 
+                        data-review-id="${review.id}">
+                        <div class="gauge-card-container">
+                            <p class="multiple-full-review-summary">${review.summary}</p>
+                        </div>
 
-            <div class="cuisine-label-container"> 
-                <h1 id=cuisine-label>${getCategoryById(category_to_id_map, review.category_id.toString())}</h1>
-            </div>
+
+                        <div class="review-sections">
+                            ${renderSections(sections)}
+                        </div>
+                    </div>`;
+            });
+        } else {
+            // Create container for all review contents
+            reviewHTML += `<div id="reviewContents">`;
             
-            <p class="full-review-summary">${review.summary}</p>
+            // Add each review's content (initially hidden except for active one)
+            reviews.forEach(review => {
+                const sections = sectionsByReview[review.id] || [];
+                const isActive = review.id === initialReviewId;
+                
+                reviewHTML += `
+                    <div class="review-content ${isActive ? 'active' : 'hidden'}" 
+                        data-review-id="${review.id}">
+                        <div class="gauge-card-container">
+                            <div class="full-review-gauge-container"> 
+                                <canvas id="full-review-gauge-${review.id}"></canvas>
+                            </div>
+                            <div class="rating-number-container"> 
+                                <h1 id="rating-number">${review.rating}/10</h1>
+                            </div>
+                            <div class="cuisine-label-container"> 
+                                <h1 id="cuisine-label">${getCategoryById(category_to_id_map, review.category_id.toString())}</h1>
+                            </div>
+                            <p class="full-review-summary">${review.summary}</p>
+                        </div>
 
-        </div>
+                        <hr class="review-divider">
 
-        <hr class="review-divider">
-
-        <div class="review-sections">
-    `
-    // Add each section
-    sections.forEach(section => {
-        // Add section heading if it exists
-        if (section.heading) {
-            reviewHTML += `<h2 class="section-heading">${section.heading}</h2>`;
+                        <div class="review-sections">
+                            ${renderSections(sections)}
+                        </div>
+                    </div>`;
+            });
         }
 
-        // Create section content based on type
-        if (section.image_url && section.text) {
-            // Section with both image and text
-            reviewHTML += `
-                <div class="section-with-image-container">
-                    <img src="${section.image_url}" alt="${section.heading || 'Review section image'}" class="section-with-image-image">
-                    <p class="section-text">${section.text}</p>
-                    
-                </div>
-            `;
-        } else if (section.image_url) {
-            // Image-only section
-            reviewHTML += `
-                <div class="image-section-container">
-                    <img src="${section.image_url}" alt="${section.heading || 'Review section image'}" class="image-section-image">
-                </div>
-            `;
-        } else if (section.text) {
-            // Text-only section
-            reviewHTML += `<p class="text-section-text">${section.text}</p>`;
-        }
-    });
 
-    reviewHTML += '</div>'; // Close review-sections div
+
+    reviewHTML += '</div>'; // Close reviewContents div
     
     fullReviewContainer.innerHTML = reviewHTML;
 
-    initializeGauge(review);
+    // After setting innerHTML, initialize gauges once and store them
+    if (hasMultipleReviews) {
+        // Initialize tab gauges only
+        reviews.forEach(review => {
+            const tabTarget = document.getElementById(`tab-gauge-${review.id}`);
+            if (tabTarget && !gauges[`tab-${review.id}`]) {
+                const tabGauge = new Gauge(tabTarget).setOptions({
+                    ...opts,
+                    radiusScale: 0.8,
+                    lineWidth: 0.2,
+                    pointer: {
+                        length: 0.5,
+                        strokeWidth: 0.08,
+                        color: '#4b3b2f'
+                    }
+                });
+                tabGauge.maxValue = 10;
+                tabGauge.setMinValue(0);
+                tabGauge.set(review.rating);
+                gauges[`tab-${review.id}`] = tabGauge;
+            }
+        });
+    } else {
+        // Initialize single review gauge
+        reviews.forEach(review => {
+            const contentTarget = document.getElementById(`full-review-gauge-${review.id}`);
+            if (contentTarget && !gauges[`content-${review.id}`]) {
+                const contentGauge = new Gauge(contentTarget).setOptions(opts);
+                contentGauge.maxValue = 10;
+                contentGauge.setMinValue(0);
+                contentGauge.set(review.rating);
+                gauges[`content-${review.id}`] = contentGauge;
+            }
+        });
+    }
+
+    // Add tab click handlers if there are multiple reviews
+    if (hasMultipleReviews) {
+        const tabContainer = document.getElementById('reviewTabs');
+        if (tabContainer) {
+            tabContainer.addEventListener('click', (e) => {
+                const tab = e.target.closest('.tab');
+                if (!tab) return;
+
+                // Update active tab
+                document.querySelectorAll('.tab').forEach(t => 
+                    t.classList.remove('active'));
+                tab.classList.add('active');
+
+                // Update visible content without touching gauges
+                const reviewId = tab.dataset.reviewId;
+                const clickedReview = reviews.find(review => review.id === reviewId);
+                
+                document.querySelectorAll('.review-content').forEach(content => {
+                    if (content.dataset.reviewId === reviewId) {
+                        content.classList.remove('hidden');
+                        content.classList.add('active');
+                    } else {
+                        content.classList.add('hidden');
+                        content.classList.remove('active');
+                    }
+                });
+
+                // Update URL with new author
+                if (clickedReview) {
+                    const currentSlug = reviews[0].slug;
+                    const authorSlug = clickedReview.author.replace(/\s+/g, '-').toLowerCase();
+                    window.location.hash = `review-${currentSlug}--${authorSlug}`;
+                }
+            });
+        }
+    }
 
     fullReviewContainer.classList.remove('hidden');
+}
+
+// Helper function to render sections
+function renderSections(sections) {
+    return sections.map(section => {
+        let sectionHTML = '';
+        if (section.heading) {
+            sectionHTML += `<h2 class="section-heading">${section.heading}</h2>`;
+        }
+
+        if (section.image_url && section.text) {
+            sectionHTML += `
+                <div class="section-with-image-container">
+                    <img src="${section.image_url}" alt="${section.heading || 'Review section image'}" class="section-with-image-image">
+                    <p class="section-text">${section.text}</p>
+                </div>`;
+        } else if (section.image_url) {
+            sectionHTML += `
+                <div class="image-section-container">
+                    <img src="${section.image_url}" alt="${section.heading || 'Review section image'}" class="image-section-image">
+                </div>`;
+        } else if (section.text) {
+            sectionHTML += `<p class="text-section-text">${section.text}</p>`;
+        }
+        return sectionHTML;
+    }).join('');
 }
 
 // Function to handle gauge initialization
