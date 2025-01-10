@@ -465,6 +465,17 @@ canvas{
     margin-right: auto;
 }
 
+.multiple-full-review-summary{
+    text-align: center;
+    font-size: clamp(1rem, 3vw, 1.3rem);
+    line-height: 1.6;
+    color: #555;
+    margin: 0rem 0 0 0;
+    max-width: 800px; /* For better readability */
+    margin-left: auto;
+    margin-right: auto;
+}
+
 .gauge-card-container {
     background: white;
     border-radius: 12px;
@@ -706,6 +717,61 @@ p.philosophy-question {
 }
 
 /* ====== /\MAP/\ ====== */
+
+.tab-container {
+    display: flex;
+    border-bottom: 2px solid #4b3b2f;
+    margin: 20px 0;
+    gap: 8px;
+    flex-wrap: wrap;
+    box-sizing: border-box;
+}
+
+.tab {
+    padding: 12px 12px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    font-size: 16px;
+    color: #666;
+    box-sizing: border-box;
+    width: 160px;
+    height: 118px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.tab-gauge-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+.tab-author {
+    width: 100%;
+    text-align: center;
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.tab.active {
+    color: #000;
+    border: 2px solid #4b3b2f;
+    border-bottom: none;
+    font-weight: bold;
+    background-color: #f8f8f8;
+    border-radius: 10px 10px 0 0;
+    box-sizing: border-box;
+}
+
+.review-content.hidden {
+    display: none;
+}
 
 /* ====== Responsive Styles ====== */
 @media (max-width: 700px) {
