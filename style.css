@@ -720,28 +720,54 @@ p.philosophy-question {
 
 .tab-container {
     display: flex;
-    border-bottom: 2px solid #4b3b2f;
     margin: 20px 0;
     gap: 8px;
-    flex-wrap: wrap;
     box-sizing: border-box;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    position: relative;
+}
+
+.tab-container::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #4b3b2f;
+    z-index: 0;
 }
 
 .tab {
-    padding: 12px 12px;
+    padding: 12px 24px;
     cursor: pointer;
     background: none;
     border: none;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
     font-size: 16px;
     color: #666;
     box-sizing: border-box;
     width: 160px;
-    height: 118px;
+    min-width: 160px;
+    flex: 0 0 160px;
     display: flex;
     flex-direction: column;
     align-items: center;
+    position: relative;
+}
+
+.tab.active {
+    color: #000;
+    border: 2px solid #4b3b2f;
+    border-bottom: 2px solid #f8f8f8;
+    font-weight: bold;
+    background-color: #f8f8f8;
+    border-radius: 10px 10px 0 0;
+    margin-bottom: -2px;
+    z-index: 1;
 }
 
 .tab-gauge-container {
@@ -757,17 +783,10 @@ p.philosophy-question {
     margin-top: 4px;
     white-space: nowrap;
     overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.tab.active {
-    color: #000;
-    border: 2px solid #4b3b2f;
-    border-bottom: none;
-    font-weight: bold;
-    background-color: #f8f8f8;
-    border-radius: 10px 10px 0 0;
-    box-sizing: border-box;
-}
+
 
 .review-content.hidden {
     display: none;

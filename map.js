@@ -22,46 +22,43 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 async function loadAllLocations() {
     const { data, error } = await supabase
-            .from('reviews')
-            .select('*');
+        .from('restaurants')
+        .select(`
+            *,
+            reviews (
+                rating,
+                summary,
+                slug,
+                author
+            )
+        `);
 
-    if (error) {
-        throw error;
-    }
+    if (error) throw error;
+    if (!data?.length) return null;
 
-    if (!data || data.length === 0) {
-        container.innerHTML = '<p>No reviews found.</p>';
-        return;
-    }
-
-    // Group reviews by restaurant
-    const groupedReviews = data.reduce((acc, review) => {
-        if (!acc[review.title]) {
-            acc[review.title] = [];
-        }
-        acc[review.title].push(review);
-        return acc;
-    }, {});
-
-    return groupedReviews;
+    return data;
 }
 
-async function displayLocations(groupedReviews) {
-    Object.keys(groupedReviews).forEach((restaurant) => {
-        const reviews = groupedReviews[restaurant];
-        const ratings = reviews.map(review => `${review.rating}/10`).join(', ');
-        const ratingLabel = reviews.length === 1 ? 'Rating: ' : 'Ratings: ';
-        const formattedTitle = reviews[0].title.replace(/ /g, '-');
- 
-        const marker = L.marker([reviews[0].latitude, reviews[0].longitude]).bindPopup(`
+async function displayLocations(restaurants) {
+    restaurants.forEach((restaurant) => {
+        if (!restaurant.latitude || !restaurant.longitude) return;
+        
+        const ratings = restaurant.reviews.map(review => `${review.rating}/10`).join(', ');
+        const ratingLabel = restaurant.reviews.length === 1 ? 'Rating: ' : 'Ratings: ';
+        
+        // Get summary from highest rated review
+        const highestRatedReview = restaurant.reviews.reduce((max, review) => 
+            review.rating > max.rating ? review : max, restaurant.reviews[0]);
+        
+        const marker = L.marker([restaurant.latitude, restaurant.longitude]).bindPopup(`
             <div class="restaurant-popup">
                 <div style="display: flex; align-items: stretch; gap: 16px;">
                     <div style="flex: 1;">
-                        <h3><a href="/reviews.html#review-${formattedTitle}" style="text-decoration: none; color: inherit;">${restaurant}</a></h3>
+                        <h3><a href="/reviews.html#review-${highestRatedReview.slug}--${highestRatedReview.author.replace(/\s+/g, '-').toLowerCase()}" style="text-decoration: none; color: inherit;">${restaurant.name}</a></h3>
                         <p>${ratingLabel}${ratings}</p>
-                        <p>${reviews[0].summary}</p>
+                        <p>${highestRatedReview?.summary || ''}</p>
                     </div>
-                    <img src="${reviews[0].cover_image_url}" alt="${restaurant}" style="width: 120px; object-fit: cover;">
+                    <img src="${restaurant.cover_image}" alt="${restaurant.name}" style="width: 120px; object-fit: cover;">
                 </div>
             </div>
         `).addTo(map);

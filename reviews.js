@@ -34,11 +34,11 @@ try {
 
 // Function to query nearest reviews
 async function getNearestReviews(latitude, longitude) {
-    const { data, error } = await supabase.rpc('nearby_reviews', {
-        lat: 40.807313,
-        long: -73.946713,
-      })
-  
+    const { data, error } = await supabase.rpc('nearby_restaurants', {
+        lat: latitude,
+        long: longitude,
+    });
+
     if (error) throw error;
     return data;
 }
@@ -47,20 +47,25 @@ async function fetchRecentReviews() {
     try {
         console.log("Attempting to fetch reviews...");
         
-        // Verify the reviews container exists
         const container = document.getElementById('review-list-container');
         if (!container) {
             throw new Error('Reviews container not found in DOM');
         }
 
-        // Add loading indicator
         container.innerHTML = '<p>Loading reviews...</p>';
-
-        
 
         const { data, error } = await supabase
             .from('reviews')
-            .select('*')
+            .select(`
+                *,
+                restaurants!restaurant_id (
+                    id,
+                    cover_image,
+                    latitude,
+                    longitude,
+                    name
+                )
+            `)
             .order('publish_date', { ascending: false })
             .limit(5);
 
@@ -73,7 +78,8 @@ async function fetchRecentReviews() {
             return;
         }
 
-        console.log('Retrieved reviews:', data);
+        // console.log('Raw review data:', JSON.stringify(data, null, 2));  // Debug log
+        // console.log('Retrieved reviews:', data);
         displayReviews(data);
         return data;
 
@@ -111,7 +117,8 @@ async function fetchAndDisplayCategories() {
             return;
         }
 
-        console.log('Retrieved categories:', data);
+        // console.log('Retrieved categories:', data);
+        console.log('Retrieved categories');
 
         // Display the categories
         data.forEach((category, index) => {
@@ -151,7 +158,7 @@ async function fetchAndDisplayCategories() {
 
 
 
-        console.log('Done with categories');
+        // console.log('Done with categories');
 
     } catch (error) {
         console.error('Error in fetchCategories:', error);
@@ -185,35 +192,29 @@ function displayReviews(reviews) {
         console.log("Starting to display reviews...");
         const reviewsContainer = document.getElementById('review-list-container');
         
-        // Clear loading message
         reviewsContainer.innerHTML = '';
 
         reviews.forEach(review => {
-            console.log('Processing review:', review);
+            // console.log('Processing review:', review);
             const reviewElement = document.createElement('div');
             reviewElement.classList.add('review-card');
 
             const reviewSlug = review.slug;
+            const restaurant = review.restaurants;
             
-            // I think this might need to be reserved for the full page article because its hard to fit this vertically while making sense
-            // <div class="plus-and-minus-container"> 
-            //     ${plussesList}
-            //     ${minusesList}
-            // </div>
             reviewElement.innerHTML = `
                 <div class="review-card-body-container" data-review-slug="${reviewSlug}" data-review-id="${review.id}" data-review-author="${review.author}">
                     <div class="review-cover-image"> 
-                        <img src=${review.cover_image_url || 'No image available'}>
+                        <img src=${review.cover_image || 'No image available'}>
                     </div>
                     <div class="non-image-review-container"> 
                         <div class="review-text-container"> 
-                            <h1>${review.title || 'Untitled'}</h1>
+                            <h1>${restaurant.name || 'Untitled'}</h1>
                             <p><strong>Reviewer:</strong> ${review.author}</p>
                             <p>${review.summary || 'No summary available'}</p>
                         </div>
 
                         <div class="right-sidebar">
-
                             <div class="gauge-container"> 
                                 <canvas id=gauge-${review.id}></canvas>
                             </div>
@@ -228,12 +229,11 @@ function displayReviews(reviews) {
                 </div>
             `;
 
-            // Add data attributes
+            // Rest of the display logic remains the same
             const reviewCardBodyContainer = reviewElement.querySelector('.review-card-body-container');
             reviewCardBodyContainer.dataset.reviewSlug = reviewSlug;
             reviewCardBodyContainer.dataset.reviewId = review.id;
 
-            // Make the gauge for this review
             reviewsContainer.appendChild(reviewElement);
             var target = document.getElementById(`gauge-${review.id}`);
             var gauge = new Gauge(target).setOptions(opts);
@@ -243,13 +243,13 @@ function displayReviews(reviews) {
             gauge.animationSpeed = 32;
         });
 
+        // Event listener logic remains the same
         reviewsContainer.addEventListener('click', (event) => {
             const reviewCard = event.target.closest('.review-card-body-container');
             if (reviewCard) {
                 const reviewSlug = reviewCard.dataset.reviewSlug;
                 const author = reviewCard.dataset.reviewAuthor.replace(/\s+/g, '-').toLowerCase();
                 
-                // Hide current view
                 const reviewCardBodyContainer = document.getElementById("review-list-container");
                 const filterHeader = document.querySelector(".filter-header");
                 reviewCardBodyContainer.classList.add("hidden");
@@ -270,6 +270,8 @@ function displayReviews(reviews) {
         }
     }
 }
+
+
 
 function getCategoryById(categoryToIdMap, targetId) {
     // Find the first entry where the value (UUID) matches the target ID
@@ -296,6 +298,8 @@ function handleReviewNavigation() {
         // Convert dashed author name back to spaces for database query
         const reviewAuthor = authorPart ? authorPart.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '';
 
+        console.log('Slug passed to API:', reviewSlug);
+
         loadFullReview(reviewSlug, reviewAuthor);
     } else {
         reviewListContainer.classList.remove("hidden");
@@ -305,56 +309,48 @@ function handleReviewNavigation() {
     }
 }
 
-// async function loadFullReview(reviewSlug) {
-//     try {
-//         const fullReviewContainer = document.getElementById('full-review-container');
-        
-//         // Fetch both review and its sections
-//         const { data: review, error: reviewError } = await supabase
-//             .from('reviews')
-//             .select('*')
-//             .eq('slug', reviewSlug)
-//             .single();
 
-//         if (reviewError) throw reviewError;
-
-//         // Fetch sections for this review, ordered by their position
-//         const { data: sections, error: sectionsError } = await supabase
-//             .from('sections')
-//             .select('*')
-//             .eq('review_id', review.id)
-//             .order('order', { ascending: true });
-
-//         if (sectionsError) throw sectionsError;
-
-//         // Render full review content
-//         renderFullReview(review, sections);
-//     } catch (error) {
-//         console.error('Error loading review:', error);
-//         fullReviewContainer.innerHTML = '<p>Error loading review</p>';
-//     }
-// }
 
 async function loadFullReview(reviewSlug, reviewAuthor = null) {
     try {
-        const fullReviewContainer = document.getElementById('full-review-container');
-        if (!fullReviewContainer) {
-            console.error('Full review container not found');
-            return;
-        }
+        // First get the restaurant_id for this review
+        const { data: initialReview, error: initialError } = await supabase
+            .from('reviews')
+            .select('restaurant_id')
+            .eq('slug', reviewSlug)
+            .single();
 
-        // Fetch all reviews with this slug
+        if (initialError) throw initialError;
+
+        // Then get all reviews for this restaurant
         const { data: reviews, error: reviewsError } = await supabase
             .from('reviews')
-            .select('*')
-            .eq('slug', reviewSlug);
+            .select(`
+                *,
+                restaurants!reviews_restaurant_id_fkey (
+                    id,
+                    cover_image,
+                    latitude,
+                    longitude,
+                    name
+                )
+            `)
+            .eq('restaurant_id', initialReview.restaurant_id);
 
         if (reviewsError) throw reviewsError;
+
+        if (reviewsError) {
+            console.error('Error loading reviews:', reviewsError);  // Add error logging
+            throw reviewsError;
+        }
         
         if (!reviews || reviews.length === 0) {
+            console.log('No reviews found for slug:', reviewSlug);  // Add debug log
             fullReviewContainer.innerHTML = '<p>Review not found</p>';
             return;
         }
+
+        // console.log('Found reviews:', reviews); 
 
         // Fetch sections for all reviews
         const reviewIds = reviews.map(review => review.id);
@@ -409,14 +405,17 @@ function renderFullReview(reviews, sectionsByReview, initialReviewId) {
     const fullReviewContainer = document.getElementById('full-review-container');
     if (!fullReviewContainer) return;
 
-    const hasMultipleReviews = reviews.length > 1;
-    const gauges = {}; // Store gauge instances
+    // Group reviews by restaurant_id
+    const restaurantId = reviews[0].restaurant_id;
+    const relatedReviews = reviews.filter(review => review.restaurant_id === restaurantId);
+    const hasMultipleReviews = relatedReviews.length > 1;
+    const gauges = {};
     
     let reviewHTML = `
-        <h1 class="article-title">${reviews[0].title}</h1>
+        <h1 class="article-title">${reviews[0].restaurants?.name || reviews[0].title}</h1>
 
         <div class="full-review-cover-image"> 
-            <img src="${reviews[0].cover_image_url || 'No image available'}" alt="${reviews[0].title}">
+            <img src="${reviews[0].restaurants?.cover_image || 'No image available'}" alt="${reviews[0].restaurants?.name || reviews[0].title}">
         </div>`;
 
         if (hasMultipleReviews) {
@@ -489,8 +488,6 @@ function renderFullReview(reviews, sectionsByReview, initialReviewId) {
                     </div>`;
             });
         }
-
-
 
     reviewHTML += '</div>'; // Close reviewContents div
     
@@ -625,14 +622,13 @@ const arraysHaveSameContents = (arr1, arr2) => {
 };
 
 async function searchReviews(
-    searchTerm = '',          // Default to an empty string
-    category_ids = [],          // Default to an empty array
-    user_latitude = null,          // Default to null
-    user_longitude = null,          // Default to null
-    ratingMin = 0,            // Default to 0
-    ratingMax = 10            // Default to 10
+    searchTerm = '',
+    category_ids = [],
+    user_latitude = null,
+    user_longitude = null,
+    ratingMin = 0,
+    ratingMax = 10
     ) {    
-        // First check to see if this is the same search we did last time
         if (
             arraysHaveSameContents(category_ids, previous_category_ids) && 
             search_entry === previous_search_entry && 
@@ -651,121 +647,141 @@ async function searchReviews(
         }
 
         try {
-        const container = document.getElementById('review-list-container');
-        if (!container) {
-        throw new Error('Reviews container not found in DOM');
-        }
-
-        // Show loading state
-        container.innerHTML = '<p>Searching reviews...</p>';
-
-        let reviewIds = null;
-
-        // Step 1: Fetch location-based review IDs 
-        if (user_latitude != null && user_longitude != null) {
-            console.log('Fetching nearby reviews based on location...');
-            const { data: locationData, error: locationError } = await supabase.rpc(
-                'nearby_reviews',
-                {
-                    lat: user_latitude,
-                    long: user_longitude,
-                }
-            );
-
-            if (locationError) {
-                console.error('Error fetching nearby reviews:', locationError);
-                throw locationError;
+            const container = document.getElementById('review-list-container');
+            if (!container) {
+                throw new Error('Reviews container not found in DOM');
             }
 
-            if (locationData && locationData.length > 0) {
-                // Extract the IDs of the reviews from the location-based data
-                reviewIds = locationData.map((review) => review.id);
-                console.log('Nearby review IDs:', reviewIds);
-            } else {
-                // If no nearby reviews are found, exit early
-                container.innerHTML = `<p>No reviews found near your location.</p>`;
+            container.innerHTML = '<p>Searching reviews...</p>';
+
+            let reviewIds = null;
+
+            // Step 1: Fetch location-based review IDs using restaurant locations
+            if (user_latitude != null && user_longitude != null) {
+                console.log('Fetching nearby restaurants based on location...');
+                const { data: locationData, error: locationError } = await supabase.rpc(
+                    'nearby_restaurants',
+                    {
+                        search_lat: user_latitude,
+                        search_lng: user_longitude,
+                        radius_meters: 5000,  // Optional: you can adjust this
+                        max_results: 20      // Optional: you can adjust this
+                    }
+                );
+            
+                if (locationError) {
+                    console.error('Error fetching nearby restaurants:', locationError);
+                    throw locationError;
+                }
+            
+                if (locationData && locationData.length > 0) {
+                    // Extract the restaurant IDs from the location-based data
+                    const restaurantIds = locationData.map((restaurant) => restaurant.id);
+                    
+                    // Get reviews for these restaurants
+                    const { data: reviewData, error: reviewError } = await supabase
+                        .from('reviews')
+                        .select('id')
+                        .in('restaurant_id', restaurantIds);
+                        
+                    if (reviewError) throw reviewError;
+                    
+                    reviewIds = reviewData.map(review => review.id);
+                    console.log('Nearby review IDs:', reviewIds);
+                } else {
+                    container.innerHTML = `<p>No reviews found near your location.</p>`;
+                    return;
+                }
+            }
+            // Start the query from 'reviews' table with restaurant join
+            let query = supabase
+                .from('reviews')
+                .select(`
+                    *,
+                    restaurants (
+                        id,
+                        cover_image,
+                        latitude,
+                        longitude,
+                        name
+                    )
+                `);
+
+            // Add category filter
+            if (category_ids.length > 0 && category_ids[0] !== '') {
+                query = query.in('category_id', category_ids);
+            }
+
+            // Add search term filter (now including restaurant name)
+            if (searchTerm.trim() !== '') {
+                query = query.or(`restaurants.name.ilike.%${searchTerm}%,summary.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`);
+            }
+
+            // Add rating range filter
+            if (ratingMin !== 0 || ratingMax !== 10) {
+                query = query.gte('rating', ratingMin).lte('rating', ratingMax);
+            }
+
+            // Filter by review IDs if location-based search was performed
+            if (reviewIds !== null) {
+                query = query.in('id', reviewIds);
+            }
+
+            const { data, error } = await query;
+
+            if (error) {
+                console.error('Error fetching reviews:', error);
+                throw error;
+            }
+
+            if (!data || data.length === 0) {
+                container.innerHTML = `<p>No reviews found matching "${searchTerm}".</p>`;
                 return;
             }
+
+            // Update filter icon for mobile
+            if (
+                category_ids.length === 0 &&
+                search_entry === '' &&
+                user_latitude === null &&
+                user_longitude === null &&
+                ratingMax === 10 &&
+                ratingMin === 0
+            ) {
+                outlinedFilterButton.classList.remove("hidden");
+                filledFilterButton.classList.add("hidden");
+            } else {
+                outlinedFilterButton.classList.add("hidden");
+                filledFilterButton.classList.remove("hidden");
+            }
+
+            // Update previous values
+            previous_category_ids = [...category_ids];
+            previous_search_entry = search_entry;
+            previous_user_latitude = user_latitude;
+            previous_user_longitude = user_longitude;
+            previous_ratingMax = ratingMax;
+            previous_ratingMin = ratingMin;
+
+            // Display results in correct order for location-based searches
+            if (reviewIds !== null && data) {
+                const orderedData = reviewIds
+                    .map(id => data.find(review => review.id === id))
+                    .filter(review => review !== undefined);
+                displayReviews(orderedData);
+                return orderedData;
+            } else {
+                displayReviews(data);
+                return data;
+            }
+
+        } catch (error) {
+            console.error('Error in searchReviews:', error);
+            const container = document.getElementById('review-list-container');
+            if (container) {
+                container.innerHTML = `<p>Error searching reviews: ${error.message}</p>`;
+            }
         }
-
-        // Start the query from 'reviews' table
-        let query = supabase.from('reviews').select('*');
-
-        // Add category filter (if applicable)
-        if (category_ids.length > 0 && category_ids[0] !== '') {
-            query = query.in('category_id', category_ids); // Use .in() to match categories
-        }
-
-        // Add search term filter (if applicable)
-        if (searchTerm.trim() !== '') {
-            query = query.or(`title.ilike.%${searchTerm}%,summary.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`);  // Search across title, summary, and content
-        }
-
-        // Add rating range filter (if applicable)
-        if (ratingMin !== 0 || ratingMax !== 10) {
-            query = query.gte('rating', ratingMin).lte('rating', ratingMax); // Search by rating
-        }
-
-        // Filter by review IDs (if location-based search was performed)
-        if (reviewIds !== null) {
-            query = query.in('id', reviewIds);
-        }
-
-        // Perform the Supabase query
-        const { data, error } = await query;
-
-        if (error) {
-            console.error('Error fetching reviews:', error);
-            throw error;
-        }
-
-        if (!data || data.length === 0) {
-            container.innerHTML = `<p>No reviews found matching "${searchTerm}".</p>`;
-            return;
-        }
-
-        // Update filter icon for mobile
-        if (
-            category_ids.length === 0 && // Check if category_ids is an empty array
-            search_entry === '' && // Check if search_entry is an empty string
-            user_latitude === null && // Check if user_latitude is null
-            user_longitude === null && // Check if user_longitude is null
-            ratingMax === 10 && // Check if ratingMax is 10
-            ratingMin === 0 // Check if ratingMin is 0
-        ) {
-            outlinedFilterButton.classList.remove("hidden");
-            filledFilterButton.classList.add("hidden");
-        } else {
-            outlinedFilterButton.classList.add("hidden");
-            filledFilterButton.classList.remove("hidden");
-        }
-
-        // Set these values so we can check next time
-        previous_category_ids = [...category_ids];
-        previous_search_entry = search_entry;
-        previous_user_latitude = user_latitude;
-        previous_user_longitude = user_longitude;
-        previous_ratingMax = ratingMax;
-        previous_ratingMin = ratingMin;
-
-        // If location-based reviews were fetched, ensure they're in the original order
-        // I don't know why I had to do this but nothing else I did could get this to do what I wanted
-        if (reviewIds !== null && data) {
-            const orderedData = reviewIds.map(id => data.find(review => review.id === id)).filter(review => review !== undefined);
-            displayReviews(orderedData);
-            return orderedData;
-        } else {
-            displayReviews(data);
-            return data;
-        }
-
-    } catch (error) {
-        console.error('Error in searchReviews:', error);
-        const container = document.getElementById('review-list-container');
-        if (container) {
-        container.innerHTML = `<p>Error searching reviews: ${error.message}</p>`;
-        }
-    }
 }
 
 
@@ -797,8 +813,8 @@ document.addEventListener('DOMContentLoaded', () => {
     handleReviewNavigation();
 
 
-    console.log('category_to_id_map:', category_to_id_map);
-    console.log('category_ids:', category_ids);
+    // console.log('category_to_id_map:', category_to_id_map);
+    // console.log('category_ids:', category_ids);
     
 
 
@@ -1022,4 +1038,3 @@ filledFilterButton.addEventListener("click", () => {
         filterHeader.style.display = "none";  // Hide the filter header
     }
 });
-
