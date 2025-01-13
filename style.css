@@ -735,6 +735,7 @@ p.philosophy-question {
     scrollbar-width: none;
     -ms-overflow-style: none;
     position: relative;
+    height: 120px;
 }
 
 .tab-container::after {

@@ -54,7 +54,8 @@ async function fetchRecentReviews() {
 
         container.innerHTML = '<p>Loading reviews...</p>';
 
-        const { data, error } = await supabase
+        // First get the reviews with restaurant info
+        const { data: reviews, error } = await supabase
             .from('reviews')
             .select(`
                 *,
@@ -69,19 +70,27 @@ async function fetchRecentReviews() {
             .order('publish_date', { ascending: false })
             .limit(5);
 
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
 
-        if (!data || data.length === 0) {
-            container.innerHTML = '<p>No reviews found.</p>';
-            return;
-        }
+        // Then get the profiles for these authors
+        const { data: profiles, profilesError } = await supabase
+            .from('profiles')
+            .select('id, display_name')
+            .in('id', reviews.map(review => review.author));
 
-        // console.log('Raw review data:', JSON.stringify(data, null, 2));  // Debug log
-        // console.log('Retrieved reviews:', data);
-        displayReviews(data);
-        return data;
+        if (profilesError) throw profilesError;
+
+        // Create a map of author IDs to display names
+        const authorMap = new Map(profiles.map(profile => [profile.id, profile.display_name]));
+
+        // Add display names to reviews
+        const reviewsWithDisplayNames = reviews.map(review => ({
+            ...review,
+            authorDisplayName: authorMap.get(review.author) || 'Anonymous'
+        }));
+
+        displayReviews(reviewsWithDisplayNames);
+        return reviewsWithDisplayNames;
 
     } catch (error) {
         console.error('Error in fetchRecentReviews:', error);
@@ -195,7 +204,6 @@ function displayReviews(reviews) {
         reviewsContainer.innerHTML = '';
 
         reviews.forEach(review => {
-            // console.log('Processing review:', review);
             const reviewElement = document.createElement('div');
             reviewElement.classList.add('review-card');
 
@@ -203,14 +211,14 @@ function displayReviews(reviews) {
             const restaurant = review.restaurants;
             
             reviewElement.innerHTML = `
-                <div class="review-card-body-container" data-review-slug="${reviewSlug}" data-review-id="${review.id}" data-review-author="${review.author}">
+                <div class="review-card-body-container" data-review-slug="${reviewSlug}" data-review-id="${review.id}" data-review-author="${review.authorDisplayName}">
                     <div class="review-cover-image"> 
                         <img src=${review.cover_image || 'No image available'}>
                     </div>
                     <div class="non-image-review-container"> 
                         <div class="review-text-container"> 
                             <h1>${restaurant.name || 'Untitled'}</h1>
-                            <p><strong>Reviewer:</strong> ${review.author}</p>
+                            <p><strong>Reviewer:</strong> ${review.authorDisplayName}</p>
                             <p>${review.summary || 'No summary available'}</p>
                         </div>
 
@@ -229,7 +237,6 @@ function displayReviews(reviews) {
                 </div>
             `;
 
-            // Rest of the display logic remains the same
             const reviewCardBodyContainer = reviewElement.querySelector('.review-card-body-container');
             reviewCardBodyContainer.dataset.reviewSlug = reviewSlug;
             reviewCardBodyContainer.dataset.reviewId = review.id;
@@ -243,19 +250,18 @@ function displayReviews(reviews) {
             gauge.animationSpeed = 32;
         });
 
-        // Event listener logic remains the same
         reviewsContainer.addEventListener('click', (event) => {
             const reviewCard = event.target.closest('.review-card-body-container');
             if (reviewCard) {
                 const reviewSlug = reviewCard.dataset.reviewSlug;
-                const author = reviewCard.dataset.reviewAuthor.replace(/\s+/g, '-').toLowerCase();
+                const authorDisplayName = reviewCard.dataset.reviewAuthor.replace(/\s+/g, '-').toLowerCase();
                 
                 const reviewCardBodyContainer = document.getElementById("review-list-container");
                 const filterHeader = document.querySelector(".filter-header");
                 reviewCardBodyContainer.classList.add("hidden");
                 filterHeader.classList.add("hidden");
         
-                window.location.hash = `review-${reviewSlug}--${author}`;
+                window.location.hash = `review-${reviewSlug}--${authorDisplayName}`;
         
                 handleReviewNavigation();
             }
@@ -311,12 +317,12 @@ function handleReviewNavigation() {
 
 
 
-async function loadFullReview(reviewSlug, reviewAuthor = null) {
+async function loadFullReview(reviewSlug, reviewAuthorDisplayName = null) {
     try {
         // First get the restaurant_id for this review
         const { data: initialReview, error: initialError } = await supabase
             .from('reviews')
-            .select('restaurant_id')
+            .select('restaurant_id, author')
             .eq('slug', reviewSlug)
             .single();
 
@@ -338,22 +344,26 @@ async function loadFullReview(reviewSlug, reviewAuthor = null) {
             .eq('restaurant_id', initialReview.restaurant_id);
 
         if (reviewsError) throw reviewsError;
-
-        if (reviewsError) {
-            console.error('Error loading reviews:', reviewsError);  // Add error logging
-            throw reviewsError;
-        }
         
-        if (!reviews || reviews.length === 0) {
-            console.log('No reviews found for slug:', reviewSlug);  // Add debug log
-            fullReviewContainer.innerHTML = '<p>Review not found</p>';
-            return;
-        }
+        // Get profiles for all authors
+        const { data: profiles, profilesError } = await supabase
+            .from('profiles')
+            .select('id, display_name')
+            .in('id', reviews.map(review => review.author));
 
-        // console.log('Found reviews:', reviews); 
+        if (profilesError) throw profilesError;
 
-        // Fetch sections for all reviews
-        const reviewIds = reviews.map(review => review.id);
+        // Create a map of author IDs to display names
+        const authorMap = new Map(profiles.map(profile => [profile.id, profile.display_name]));
+
+        // Add display names to reviews
+        const reviewsWithDisplayNames = reviews.map(review => ({
+            ...review,
+            authorDisplayName: authorMap.get(review.author) || 'Anonymous'
+        }));
+
+        // Get sections for all reviews
+        const reviewIds = reviewsWithDisplayNames.map(review => review.id);
         const { data: sections, error: sectionsError } = await supabase
             .from('sections')
             .select('*')
@@ -362,7 +372,6 @@ async function loadFullReview(reviewSlug, reviewAuthor = null) {
 
         if (sectionsError) throw sectionsError;
 
-        // Group sections by review_id
         const sectionsByReview = sections.reduce((acc, section) => {
             if (!acc[section.review_id]) {
                 acc[section.review_id] = [];
@@ -371,27 +380,24 @@ async function loadFullReview(reviewSlug, reviewAuthor = null) {
             return acc;
         }, {});
 
-        // Determine initial active review based on author if provided
         let initialReviewId;
-        if (reviewAuthor) {
-            // Normalize the comparison by converting both to lowercase
-            const authorReview = reviews.find(review => 
-                review.author.toLowerCase() === reviewAuthor.toLowerCase()
+        if (reviewAuthorDisplayName) {
+            const authorReview = reviewsWithDisplayNames.find(review => 
+                review.authorDisplayName.toLowerCase() === reviewAuthorDisplayName.replace(/-/g, ' ').toLowerCase()
             );
-            initialReviewId = authorReview ? authorReview.id : reviews[0].id;
+            initialReviewId = authorReview ? authorReview.id : reviewsWithDisplayNames[0].id;
         } else {
-            initialReviewId = reviews[0].id;
+            initialReviewId = reviewsWithDisplayNames[0].id;
         }
 
-        // Render full review content with tabs if there are multiple reviews
-        renderFullReview(reviews, sectionsByReview, initialReviewId);
+        renderFullReview(reviewsWithDisplayNames, sectionsByReview, initialReviewId);
 
-        // Update URL if author isn't in it yet
-        if (!reviewAuthor) {
-            const activeReview = reviews.find(review => review.id === initialReviewId);
-            const authorSlug = activeReview.author.replace(/\s+/g, '-').toLowerCase();
+        if (!reviewAuthorDisplayName) {
+            const activeReview = reviewsWithDisplayNames.find(review => review.id === initialReviewId);
+            const authorSlug = activeReview.authorDisplayName.replace(/\s+/g, '-').toLowerCase();
             window.location.hash = `review-${reviewSlug}--${authorSlug}`;
         }
+
     } catch (error) {
         console.error('Error loading review:', error);
         const fullReviewContainer = document.getElementById('full-review-container');
@@ -424,15 +430,16 @@ function renderFullReview(reviews, sectionsByReview, initialReviewId) {
                 ${reviews.map((review) => `
                     <button class="tab ${review.id === initialReviewId ? 'active' : ''}" 
                             data-review-id="${review.id}"
-                            data-author="${review.author}">
+                            data-author="${review.authorDisplayName}">
                         <div class="tab-gauge-container">
                             <canvas id="tab-gauge-${review.id}"></canvas>
                             <div class="tab-rating">${review.rating}/10</div>
                         </div>
-                        <div class="tab-author">${review.author}</div>
+                        <div class="tab-author">${review.authorDisplayName}</div>
                     </button>
                 `).join('')}
             </div>`;
+        
 
             // Create container for all review contents
             reviewHTML += `<div id="reviewContents">`;
@@ -693,7 +700,8 @@ async function searchReviews(
                     return;
                 }
             }
-            // Start the query from 'reviews' table with restaurant join
+
+            // Start building the main query
             let query = supabase
                 .from('reviews')
                 .select(`
@@ -727,17 +735,34 @@ async function searchReviews(
                 query = query.in('id', reviewIds);
             }
 
-            const { data, error } = await query;
+            const { data: reviews, error } = await query;
 
             if (error) {
                 console.error('Error fetching reviews:', error);
                 throw error;
             }
 
-            if (!data || data.length === 0) {
+            if (!reviews || reviews.length === 0) {
                 container.innerHTML = `<p>No reviews found matching "${searchTerm}".</p>`;
                 return;
             }
+
+            // Get profiles for all authors
+            const { data: profiles, profilesError } = await supabase
+                .from('profiles')
+                .select('id, display_name')
+                .in('id', reviews.map(review => review.author));
+
+            if (profilesError) throw profilesError;
+
+            // Create a map of author IDs to display names
+            const authorMap = new Map(profiles.map(profile => [profile.id, profile.display_name]));
+
+            // Add display names to reviews
+            const reviewsWithDisplayNames = reviews.map(review => ({
+                ...review,
+                authorDisplayName: authorMap.get(review.author) || 'Anonymous'
+            }));
 
             // Update filter icon for mobile
             if (
@@ -764,15 +789,15 @@ async function searchReviews(
             previous_ratingMin = ratingMin;
 
             // Display results in correct order for location-based searches
-            if (reviewIds !== null && data) {
+            if (reviewIds !== null && reviewsWithDisplayNames) {
                 const orderedData = reviewIds
-                    .map(id => data.find(review => review.id === id))
+                    .map(id => reviewsWithDisplayNames.find(review => review.id === id))
                     .filter(review => review !== undefined);
                 displayReviews(orderedData);
                 return orderedData;
             } else {
-                displayReviews(data);
-                return data;
+                displayReviews(reviewsWithDisplayNames);
+                return reviewsWithDisplayNames;
             }
 
         } catch (error) {
