@@ -870,6 +870,110 @@ p.philosophy-question {
     font-size: 1.1rem;
 }
 
+/* Admin Page Specific Styles */
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #4b3b2f;
+}
+
+.admin-actions {
+    display: flex;
+    gap: 15px;
+}
+
+.review-form {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #4b3b2f;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #4b3b2f;
+    font-weight: bold;
+}
+
+.form-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.form-textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    min-height: 150px;
+    font-size: 14px;
+    resize: vertical;
+}
+
+.section-list {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 15px;
+    margin-top: 10px;
+}
+
+.section-item {
+    border-bottom: 1px solid #eee;
+    padding: 10px 0;
+}
+
+.section-item:last-child {
+    border-bottom: none;
+}
+
+/* Modal Styles */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+}
+
+.modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #4b3b2f;
+}
+
 /* ====== Responsive Styles ====== */
 @media (max-width: 700px) {
     .content-wrapper {

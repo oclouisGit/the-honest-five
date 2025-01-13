@@ -254,14 +254,15 @@ function displayReviews(reviews) {
             const reviewCard = event.target.closest('.review-card-body-container');
             if (reviewCard) {
                 const reviewSlug = reviewCard.dataset.reviewSlug;
-                const authorDisplayName = reviewCard.dataset.reviewAuthor.replace(/\s+/g, '-').toLowerCase();
+                const authorDisplayName = reviewCard.dataset.reviewAuthor;
+                const authorSlug = authorDisplayName.toLowerCase().replace(/\s+/g, '-');
                 
                 const reviewCardBodyContainer = document.getElementById("review-list-container");
                 const filterHeader = document.querySelector(".filter-header");
                 reviewCardBodyContainer.classList.add("hidden");
                 filterHeader.classList.add("hidden");
         
-                window.location.hash = `review-${reviewSlug}--${authorDisplayName}`;
+                window.location.hash = `review-${reviewSlug}--${authorSlug}`;
         
                 handleReviewNavigation();
             }
@@ -299,10 +300,10 @@ function handleReviewNavigation() {
         filledFilterButton.classList.add("hidden");
         fullReviewContainer.classList.remove("hidden");
 
-        const [slugPart, authorPart] = hash.replace('#review-', '').split('--');
+        const [slugPart, authorSlugPart] = hash.replace('#review-', '').split('--');
         const reviewSlug = slugPart;
-        // Convert dashed author name back to spaces for database query
-        const reviewAuthor = authorPart ? authorPart.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '';
+        // Convert author slug back to display name format
+        const reviewAuthor = authorSlugPart ? authorSlugPart.replace(/-/g, ' ') : '';
 
         console.log('Slug passed to API:', reviewSlug);
 
@@ -566,7 +567,7 @@ function renderFullReview(reviews, sectionsByReview, initialReviewId) {
                 // Update URL with new author
                 if (clickedReview) {
                     const currentSlug = reviews[0].slug;
-                    const authorSlug = clickedReview.author.replace(/\s+/g, '-').toLowerCase();
+                    const authorSlug = clickedReview.authorDisplayName.toLowerCase().replace(/\s+/g, '-');
                     window.location.hash = `review-${currentSlug}--${authorSlug}`;
                 }
             });
