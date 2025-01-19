@@ -54,7 +54,7 @@ async function displayLocations(restaurants) {
             <div class="restaurant-popup">
                 <div style="display: flex; align-items: stretch; gap: 16px;">
                     <div style="flex: 1;">
-                        <h3><a href="/reviews.html#review-${highestRatedReview.slug}--${highestRatedReview.author.replace(/\s+/g, '-').toLowerCase()}" style="text-decoration: none; color: inherit;">${restaurant.name}</a></h3>
+                        <h3><a href="/reviews.html#review-${highestRatedReview.slug}" style="text-decoration: none; color: inherit;">${restaurant.name}</a></h3>
                         <p>${ratingLabel}${ratings}</p>
                         <p>${highestRatedReview?.summary || ''}</p>
                     </div>
