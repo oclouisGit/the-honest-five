@@ -254,15 +254,19 @@ function displayReviews(reviews) {
             const reviewCard = event.target.closest('.review-card-body-container');
             if (reviewCard) {
                 const reviewSlug = reviewCard.dataset.reviewSlug;
-                const authorDisplayName = reviewCard.dataset.reviewAuthor.replace(/\s+/g, '-').toLowerCase();
+                
+                // Remove this line since we don't need to append the author anymore
+                // const authorDisplayName = reviewCard.dataset.reviewAuthor;
+                // const authorSlug = authorDisplayName.toLowerCase().replace(/\s+/g, '-');
                 
                 const reviewCardBodyContainer = document.getElementById("review-list-container");
                 const filterHeader = document.querySelector(".filter-header");
                 reviewCardBodyContainer.classList.add("hidden");
                 filterHeader.classList.add("hidden");
-        
-                window.location.hash = `review-${reviewSlug}--${authorDisplayName}`;
-        
+            
+                // Just use the slug as-is since it already includes the author
+                window.location.hash = `review-${reviewSlug}`;
+            
                 handleReviewNavigation();
             }
         });
@@ -299,13 +303,13 @@ function handleReviewNavigation() {
         filledFilterButton.classList.add("hidden");
         fullReviewContainer.classList.remove("hidden");
 
-        const [slugPart, authorPart] = hash.replace('#review-', '').split('--');
-        const reviewSlug = slugPart;
-        // Convert dashed author name back to spaces for database query
-        const reviewAuthor = authorPart ? authorPart.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '';
+        // Remove the #review- prefix to get the full slug
+        const reviewSlug = hash.replace('#review-', '');
+        // The author name is already part of the slug, so we can extract it
+        const authorSlugPart = reviewSlug.split('--')[1];
+        const reviewAuthor = authorSlugPart ? authorSlugPart : '';
 
         console.log('Slug passed to API:', reviewSlug);
-
         loadFullReview(reviewSlug, reviewAuthor);
     } else {
         reviewListContainer.classList.remove("hidden");
@@ -319,14 +323,18 @@ function handleReviewNavigation() {
 
 async function loadFullReview(reviewSlug, reviewAuthorDisplayName = null) {
     try {
-        // First get the restaurant_id for this review
-        const { data: initialReview, error: initialError } = await supabase
+        const { data: initialReviews, error: initialError } = await supabase
             .from('reviews')
             .select('restaurant_id, author')
-            .eq('slug', reviewSlug)
-            .single();
+            .eq('slug', reviewSlug);  // Removed .single()
 
         if (initialError) throw initialError;
+        if (!initialReviews || initialReviews.length === 0) {
+            throw new Error('Review not found');
+        }
+
+        // Take the first matching review
+        const initialReview = initialReviews[0];
 
         // Then get all reviews for this restaurant
         const { data: reviews, error: reviewsError } = await supabase
@@ -536,19 +544,18 @@ function renderFullReview(reviews, sectionsByReview, initialReviewId) {
         });
     }
 
-    // Add tab click handlers if there are multiple reviews
     if (hasMultipleReviews) {
         const tabContainer = document.getElementById('reviewTabs');
         if (tabContainer) {
             tabContainer.addEventListener('click', (e) => {
                 const tab = e.target.closest('.tab');
                 if (!tab) return;
-
+    
                 // Update active tab
                 document.querySelectorAll('.tab').forEach(t => 
                     t.classList.remove('active'));
                 tab.classList.add('active');
-
+    
                 // Update visible content without touching gauges
                 const reviewId = tab.dataset.reviewId;
                 const clickedReview = reviews.find(review => review.id === reviewId);
@@ -562,12 +569,11 @@ function renderFullReview(reviews, sectionsByReview, initialReviewId) {
                         content.classList.remove('active');
                     }
                 });
-
-                // Update URL with new author
+    
+                // Update URL using pushState
                 if (clickedReview) {
-                    const currentSlug = reviews[0].slug;
-                    const authorSlug = clickedReview.author.replace(/\s+/g, '-').toLowerCase();
-                    window.location.hash = `review-${currentSlug}--${authorSlug}`;
+                    const newUrl = `#review-${clickedReview.slug}`;
+                    history.pushState(null, '', newUrl);
                 }
             });
         }
@@ -621,6 +627,7 @@ function initializeGauge(review) {
 
 // Add event listener for browser back/forward navigation
 window.addEventListener('popstate', handleReviewNavigation);
+
 
 const arraysHaveSameContents = (arr1, arr2) => {
     if (arr1.length !== arr2.length) return false;
