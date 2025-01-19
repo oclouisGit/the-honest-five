@@ -279,7 +279,6 @@ async function initializeAdmin() {
     }
 }
 
-// Load all reviews for the current user
 async function loadUserReviews(userId) {
     try {
         const { data: reviews, error } = await supabase
@@ -289,6 +288,10 @@ async function loadUserReviews(userId) {
                 restaurants (
                     id,
                     name
+                ),
+                categories (
+                    id,
+                    category
                 )
             `)
             .eq('author', userId);
@@ -302,9 +305,9 @@ async function loadUserReviews(userId) {
                     <h2>${security.sanitizeInput(review.restaurants?.name || 'Unnamed Restaurant')}</h2>
                     <div class="review-meta">
                         <span>Rating: ${review.rating}/10</span>
-                        <span>Category: ${security.sanitizeInput(review.category_id)}</span>
+                        <span>Category: ${security.sanitizeInput(review.categories?.category || 'Uncategorized')}</span>
                     </div>
-                    <p>${security.sanitizeInput(review.summary)}</p>
+                    <p>${'Summary: ' + security.sanitizeInput(review.summary)}</p>
                 </div>
                 <div class="review-actions">
                     <button class="btn btn-secondary" onclick="editReview('${review.id}')">Edit</button>
@@ -367,12 +370,12 @@ function addNewSection(sectionData = null) {
             <input type="text" class="form-input section-heading" value="${security.sanitizeInput(sectionData?.heading || '')}">
         </div>
         <div class="form-group">
-            <label>Content</label>
-            <textarea class="form-textarea section-content">${security.sanitizeInput(sectionData?.text || '')}</textarea>
-        </div>
-        <div class="form-group">
             <label>Image URL</label>
             <input type="url" class="form-input section-image" value="${security.sanitizeInput(sectionData?.image_url || '')}">
+        </div>
+        <div class="form-group">
+            <label>Content</label>
+            <textarea class="form-textarea section-content">${security.sanitizeInput(sectionData?.text || '')}</textarea>
         </div>
         <button type="button" class="btn btn-danger" onclick="removeSection(this)">Remove Section</button>
     `;
