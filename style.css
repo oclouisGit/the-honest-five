@@ -994,8 +994,189 @@ p.philosophy-question {
 }
 
 
-/* Debug with obvious colors to see what's being affected */
+.editor-basic-info {
+    max-width: 800px;
+    margin: 0 auto 2rem auto;
+}
 
+.editor-rating-category {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.editor-rating-category > * {
+    flex: 1;
+}
+
+.editor-summary-container {
+    max-width: 800px;
+    margin: 2rem auto;
+}
+
+.editor-summary {
+    width: 100%;
+    min-height: 100px;
+    text-align: center;
+    font-size: 1.2rem;
+    line-height: 1.6;
+    color: #4b3b2f;
+    padding: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+}
+
+.editor-sections-list {
+    max-width: 800px;
+    margin: 2rem auto;
+}
+
+.editor-section {
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    position: relative;
+}
+
+.editor-section-remove {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    color: #dc3545;
+    cursor: pointer;
+}
+
+.editor-section-heading {
+    width: 100%;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.editor-section-image-url {
+    width: 100%;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.editor-section-image-preview {
+    width: 60%;
+    margin: 1rem auto;
+    display: block;
+    border-radius: 4px;
+}
+
+.editor-section-content {
+    width: 100%;
+    min-height: 200px;
+    padding: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    line-height: 1.6;
+}
+
+.editor-add-section-btn {
+    display: block;
+    width: 100%;
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 1rem;
+    background: #4b3b2f;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.editor-save-btn {
+    display: block;
+    width: 100%;
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 1rem;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.editor-add-section-btn:hover {
+    background: #654735;
+}
+
+.editor-save-btn:hover {
+    background: #218838;
+}
+
+.editor-add-section {
+    position: relative;
+    max-width: 800px;
+    margin: 2rem auto;
+}
+
+.editor-section-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #4b3b2f;
+    border-radius: 4px;
+    overflow: hidden;
+    z-index: 10;
+}
+
+.editor-section-dropdown button {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: none;
+    border: none;
+    border-bottom: 1px solid #4b3b2f;
+    text-align: left;
+    cursor: pointer;
+    color: #4b3b2f;
+}
+
+.editor-section-dropdown button:last-child {
+    border-bottom: none;
+}
+
+.editor-section-dropdown button:hover {
+    background: #f8f8f8;
+}
+
+.hidden {
+    display: none;
+}
+
+/* Add these styles for different section types */
+.editor-section-heading {
+    font-size: 2rem;
+    font-weight: bold;
+    text-align: center;
+    margin: 2rem 0;
+}
+
+.editor-section-image {
+    text-align: center;
+    margin: 2rem 0;
+}
+
+.editor-section-text {
+    margin: 2rem 0;
+}
 
 
 
