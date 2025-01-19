@@ -234,26 +234,26 @@ const sectionsList = document.getElementById('sectionsList');
 // Initialize the admin page
 async function initializeAdmin() {
     try {
-        // Get current session
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-            // Show auth container instead of redirecting
             ui.showAuthContainer();
             return;
         }
 
         ui.showUserContainer(session.user);
 
+        // Fetch categories
         const { data: categoryData, error: categoryError } = await supabase
             .from('categories')
             .select('id, category');
         if (categoryError) throw categoryError;
 
-        // Populate category dropdown
         const categorySelect = document.getElementById('category');
-        categorySelect.innerHTML = categoryData.map(cat => 
-            `<option value="${cat.id}">${security.sanitizeInput(cat.category)}</option>`
-        ).join('');
+        if (categorySelect) {
+            categorySelect.innerHTML = categoryData.map(cat => 
+                `<option value="${cat.id}">${security.sanitizeInput(cat.category)}</option>`
+            ).join('');
+        }
 
         // Fetch restaurants
         const { data: restaurantData, error: restaurantError } = await supabase
@@ -262,17 +262,19 @@ async function initializeAdmin() {
             .order('name');
         if (restaurantError) throw restaurantError;
 
-        // Populate restaurant dropdown
         const restaurantSelect = document.getElementById('restaurantId');
-        restaurantSelect.innerHTML = restaurantData.map(restaurant => 
-            `<option value="${restaurant.id}">${security.sanitizeInput(restaurant.name)}</option>`
-        ).join('');
+        if (restaurantSelect) {
+            restaurantSelect.innerHTML = restaurantData.map(restaurant => 
+                `<option value="${restaurant.id}">${security.sanitizeInput(restaurant.name)}</option>`
+            ).join('');
+        }
 
         // Load user's reviews
         await loadUserReviews(session.user.id);
 
         // Set up event listeners
         setupEventListeners();
+
     } catch (error) {
         console.error('Initialization error:', error);
         ui.showError('Error initializing admin page. Please try again.');
@@ -321,12 +323,33 @@ async function loadUserReviews(userId) {
     }
 }
 
-// Set up event listeners
 function setupEventListeners() {
-    newReviewBtn.addEventListener('click', () => showReviewModal());
-    modalClose.addEventListener('click', () => hideReviewModal());
-    addSectionBtn.addEventListener('click', addNewSection);
-    reviewForm.addEventListener('submit', handleReviewSubmit);
+    const newReviewBtn = document.getElementById('newReviewBtn');
+    const modalClose = document.querySelector('.modal-close');
+    const addSectionBtn = document.getElementById('addSectionBtn');
+    
+    if (newReviewBtn) {
+        newReviewBtn.addEventListener('click', () => showReviewModal());
+    }
+    
+    if (modalClose) {
+        modalClose.addEventListener('click', hideReviewModal);
+    }
+    
+    if (addSectionBtn) {
+        addSectionBtn.addEventListener('click', toggleSectionDropdown);
+    }
+}
+
+// Add this new function to handle form submission
+function setupFormListener() {
+    const form = document.getElementById('modalReviewForm');
+    if (form) {
+        form.addEventListener('submit', handleReviewSubmit);
+        console.log('Form listener attached');
+    } else {
+        console.error('Form not found');
+    }
 }
 
 function showReviewModal(reviewData = null) {
@@ -334,52 +357,108 @@ function showReviewModal(reviewData = null) {
     modalTitle.textContent = reviewData ? 'Edit Review' : 'New Review';
     
     if (reviewData) {
-        // Populate form with review data
         document.getElementById('reviewId').value = reviewData.id;
         document.getElementById('restaurantId').value = reviewData.restaurant_id;
         document.getElementById('rating').value = reviewData.rating;
         document.getElementById('category').value = reviewData.category_id;
         document.getElementById('summary').value = reviewData.summary;
         
-        // Load sections
         loadReviewSections(reviewData.id);
     } else {
-        // Clear form for new review
-        reviewForm.reset();
+        document.getElementById('modalReviewForm').reset();
         document.getElementById('reviewId').value = '';
-        sectionsList.innerHTML = '';
-        addNewSection(); // Add one empty section by default
+        document.getElementById('sectionsList').innerHTML = '';
     }
     
     reviewModal.style.display = 'flex';
+    setupFormListener(); // Add this line to set up the form listener
 }
 
 // Hide the review modal
 function hideReviewModal() {
     reviewModal.style.display = 'none';
-    reviewForm.reset();
+    const form = document.getElementById('modalReviewForm');
+    if (form) {
+        form.reset();
+    }
+    // Clear sections list
+    const sectionsList = document.getElementById('sectionsList');
+    if (sectionsList) {
+        sectionsList.innerHTML = '';
+    }
+    // Clear the review ID
+    const reviewIdInput = document.getElementById('reviewId');
+    if (reviewIdInput) {
+        reviewIdInput.value = '';
+    }
 }
 
-// Add a new section to the form
-function addNewSection(sectionData = null) {
+// Add this to your event listeners setup
+document.getElementById('addSectionBtn').addEventListener('click', toggleSectionDropdown);
+
+// Add these new functions
+function toggleSectionDropdown() {
+    const dropdown = document.getElementById('sectionTypeDropdown');
+    dropdown.classList.toggle('hidden');
+}
+
+// Hide dropdown when clicking outside
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.editor-add-section')) {
+        document.getElementById('sectionTypeDropdown').classList.add('hidden');
+    }
+});
+
+// Replace your old addNewSection function with this new one
+function addNewSection(type, sectionData = null) {
     const sectionDiv = document.createElement('div');
-    sectionDiv.className = 'section-item';
-    sectionDiv.innerHTML = `
-        <div class="form-group">
-            <label>Section Heading</label>
-            <input type="text" class="form-input section-heading" value="${security.sanitizeInput(sectionData?.heading || '')}">
-        </div>
-        <div class="form-group">
-            <label>Image URL</label>
-            <input type="url" class="form-input section-image" value="${security.sanitizeInput(sectionData?.image_url || '')}">
-        </div>
-        <div class="form-group">
-            <label>Content</label>
-            <textarea class="form-textarea section-content">${security.sanitizeInput(sectionData?.text || '')}</textarea>
-        </div>
-        <button type="button" class="btn btn-danger" onclick="removeSection(this)">Remove Section</button>
-    `;
-    sectionsList.appendChild(sectionDiv);
+    sectionDiv.className = 'editor-section';
+    
+    let sectionContent = '';
+    
+    switch(type) {
+        case 'heading':
+            sectionContent = `
+                <button type="button" class="editor-section-remove" onclick="removeSection(this)">×</button>
+                <input type="text" 
+                       class="editor-section-heading" 
+                       placeholder="Enter heading..."
+                       value="${security.sanitizeInput(sectionData?.heading || '')}">
+            `;
+            break;
+            
+        case 'image':
+            sectionContent = `
+                <button type="button" class="editor-section-remove" onclick="removeSection(this)">×</button>
+                <div class="editor-section-image">
+                    <input type="url" 
+                           class="editor-section-image-url" 
+                           placeholder="Image URL"
+                           value="${security.sanitizeInput(sectionData?.image_url || '')}"
+                           onchange="previewImage(this)">
+                    ${sectionData?.image_url ? 
+                      `<img src="${security.sanitizeInput(sectionData.image_url)}" 
+                            class="editor-section-image-preview" 
+                            alt="Section image">` 
+                      : ''}
+                </div>
+            `;
+            break;
+            
+        case 'text':
+            sectionContent = `
+                <button type="button" class="editor-section-remove" onclick="removeSection(this)">×</button>
+                <textarea class="editor-section-content" 
+                          placeholder="Write your content here...">${security.sanitizeInput(sectionData?.text || '')}</textarea>
+            `;
+            break;
+    }
+    
+    sectionDiv.innerHTML = sectionContent;
+    sectionDiv.dataset.sectionType = type;
+    
+    document.getElementById('sectionsList').appendChild(sectionDiv);
+    document.getElementById('sectionTypeDropdown').classList.add('hidden');
 }
 
 // Remove a section from the form
@@ -387,11 +466,26 @@ function removeSection(button) {
     button.closest('.section-item').remove();
 }
 
-// Load sections for a review
+function previewImage(input) {
+    const section = input.closest('.editor-section');
+    let preview = section.querySelector('.editor-section-image-preview');
+    
+    if (input.value) {
+        if (!preview) {
+            preview = document.createElement('img');
+            preview.className = 'editor-section-image-preview';
+            input.parentNode.insertBefore(preview, input.nextSibling);
+        }
+        preview.src = input.value;
+    } else if (preview) {
+        preview.remove();
+    }
+}
+
 async function loadReviewSections(reviewId) {
     try {
         const { data: sections, error } = await supabase
-            .from('sections')  // Changed from review_sections
+            .from('sections')
             .select('*')
             .eq('review_id', reviewId)
             .order('order');
@@ -399,7 +493,18 @@ async function loadReviewSections(reviewId) {
         if (error) throw error;
 
         sectionsList.innerHTML = '';
-        sections.forEach(section => addNewSection(section));
+        
+        sections.forEach(section => {
+            if (section.heading) {
+                addNewSection('heading', section);
+            }
+            if (section.image_url) {
+                addNewSection('image', section);
+            }
+            if (section.text) {
+                addNewSection('text', section);
+            }
+        });
     } catch (error) {
         console.error('Error loading sections:', error);
         ui.showError('Error loading review sections. Please try again.');
@@ -409,6 +514,8 @@ async function loadReviewSections(reviewId) {
 // Edit review
 async function editReview(reviewId) {
     try {
+        console.log('Editing review:', reviewId);
+        
         const { data: review, error } = await supabase
             .from('reviews')
             .select(`
@@ -422,8 +529,13 @@ async function editReview(reviewId) {
             .single();
 
         if (error) throw error;
+        
+        console.log('Retrieved review data:', review);
 
         showReviewModal(review);
+        
+        // Load sections for this review
+        await loadReviewSections(reviewId);
     } catch (error) {
         console.error('Error loading review:', error);
         ui.showError('Error loading review. Please try again.');
@@ -451,7 +563,6 @@ async function deleteReview(reviewId) {
     }
 }
 
-// Handle form submission
 async function handleReviewSubmit(event) {
     event.preventDefault();
     
@@ -462,8 +573,7 @@ async function handleReviewSubmit(event) {
         const categoryId = document.getElementById('category').value;
         const summary = security.sanitizeInput(document.getElementById('summary').value.trim());
 
-        // Log the data we're about to submit
-        console.log('Submitting review data:', {
+        console.log('Form data:', {
             reviewId,
             restaurantId,
             rating,
@@ -486,67 +596,89 @@ async function handleReviewSubmit(event) {
             author: session.user.id
         };
 
-        console.log('Review data being sent to Supabase:', reviewData);
+        console.log('Review data being sent:', reviewData);
 
         let result;
         if (reviewId) {
-            // Update existing review
+            console.log('Updating existing review:', reviewId);
             result = await supabase
                 .from('reviews')
                 .update(reviewData)
-                .eq('id', reviewId);
-            console.log('Update result:', result);
+                .eq('id', reviewId)
+                .select();  // Add .select() to get the updated data
         } else {
-            // Create new review
+            console.log('Creating new review');
             result = await supabase
                 .from('reviews')
-                .insert([reviewData]);
-            console.log('Insert result:', result);
+                .insert([reviewData])
+                .select();  // Add .select() to get the inserted data
         }
 
-        if (result.error) {
-            throw result.error;
-        }
+        console.log('Supabase result:', result);
 
-        // Get the review ID (either existing or new)
+        if (result.error) throw result.error;
+
         const savedReviewId = reviewId || result.data?.[0]?.id;
         if (!savedReviewId) {
             throw new Error('Failed to get review ID after save');
         }
 
-        // Handle sections
-        console.log('Processing sections...');
-        const sections = Array.from(document.querySelectorAll('.section-item')).map((section, index) => ({
-            review_id: savedReviewId,
-            heading: security.sanitizeInput(section.querySelector('.section-heading').value.trim()),
-            text: security.sanitizeInput(section.querySelector('.section-content').value.trim()),
-            image_url: security.sanitizeInput(section.querySelector('.section-image').value.trim()),
-            order: index
-        }));
+        console.log('Processing sections for review:', savedReviewId);
 
-        console.log('Section data:', sections);
+        // Handle sections
+        const sections = Array.from(document.querySelectorAll('.editor-section'))
+            .map((section, index) => {
+                const type = section.dataset.sectionType;
+                const baseSection = {
+                    review_id: savedReviewId,
+                    order: index,
+                    heading: '',
+                    text: '',
+                    image_url: ''
+                };
+                
+                switch(type) {
+                    case 'heading':
+                        baseSection.heading = security.sanitizeInput(
+                            section.querySelector('.editor-section-heading').value.trim()
+                        );
+                        break;
+                        
+                    case 'image':
+                        baseSection.image_url = security.sanitizeInput(
+                            section.querySelector('.editor-section-image-url').value.trim()
+                        );
+                        break;
+                        
+                    case 'text':
+                        baseSection.text = security.sanitizeInput(
+                            section.querySelector('.editor-section-content').value.trim()
+                        );
+                        break;
+                }
+                
+                return baseSection;
+            });
+
+        console.log('Sections to save:', sections);
 
         // Delete existing sections if updating
         if (reviewId) {
+            console.log('Deleting old sections');
             const { error: deleteError } = await supabase
-                .from('sections')  // Changed from review_sections
+                .from('sections')
                 .delete()
                 .eq('review_id', reviewId);
-            if (deleteError) {
-                console.error('Error deleting sections:', deleteError);
-                throw deleteError;
-            }
+            if (deleteError) throw deleteError;
         }
 
         // Insert new sections
         if (sections.length > 0) {
+            console.log('Inserting new sections');
             const { error: sectionsError } = await supabase
-                .from('sections')  // Changed from review_sections
+                .from('sections')
                 .insert(sections);
-            if (sectionsError) {
-                console.error('Error inserting sections:', sectionsError);
-                throw sectionsError;
-            }
+            if (sectionsError) throw sectionsError;
         }
 
         // Reload reviews and hide modal
@@ -565,6 +697,7 @@ window.signOut = signOut;
 window.editReview = editReview;
 window.deleteReview = deleteReview;
 window.removeSection = removeSection;
+
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', initializeAdmin);
