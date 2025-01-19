@@ -815,6 +815,15 @@ p.philosophy-question {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
+
+.edit-review-card-body-container {
+    display: flex;
+    flex-direction: row;
+    gap: 15px;
+    align-items: center;
+    cursor: pointer;
+}
+
 /* Form Group Styles */
 .auth-container .form-group {
 }
@@ -844,6 +853,36 @@ p.philosophy-question {
     font-size: 1rem;
     margin-right: 1rem;
     margin-bottom: 1rem;
+}
+
+.admin-container .button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 0.5rem ;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.review-list .edit-button {
+    background-color: rgb(228, 206, 6);
+    color: black;
+    padding: 0.5rem ;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.review-list .delete-button {
+    background-color: rgb(199, 24, 1);
+    color: black;
+    padding: 0.5rem ;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
 }
 
 .auth-container .button:hover {
@@ -882,6 +921,16 @@ p.philosophy-question {
 .admin-actions {
     display: flex;
     gap: 15px;
+}
+
+.edit-review-card {
+    margin: 2rem auto;
+    padding: 2rem;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    height: auto;
 }
 
 .review-form {
@@ -1036,15 +1085,17 @@ p.philosophy-question {
     background: white;
     border: 1px solid #ccc;
     border-radius: 8px;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
+    padding: 0 1.5rem;
+    margin-bottom: 0.5rem;
     position: relative;
+    height: auto;
 }
+
 
 .editor-section-remove {
     position: absolute;
-    top: 1rem;
-    right: 1rem;
+    top: 0.1rem;
+    right: 0.1rem;
     background: none;
     border: none;
     color: #dc3545;
@@ -1064,14 +1115,14 @@ p.philosophy-question {
 .editor-section-image-url {
     width: 100%;
     padding: 0.5rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.25rem;
     border: 1px solid #ccc;
     border-radius: 4px;
 }
 
 .editor-section-image-preview {
     width: 60%;
-    margin: 1rem auto;
+    margin: 0.5rem auto;
     display: block;
     border-radius: 4px;
 }
@@ -1079,7 +1130,7 @@ p.philosophy-question {
 .editor-section-content {
     width: 100%;
     min-height: 200px;
-    padding: 1rem;
+    padding: 0.5rem;
     border: 1px solid #ccc;
     border-radius: 4px;
     font-family: Georgia, 'Times New Roman', Times, serif;
@@ -1103,7 +1154,7 @@ p.philosophy-question {
     display: block;
     width: 100%;
     max-width: 800px;
-    margin: 2rem auto;
+    margin: 2rem auto 0 auto;
     padding: 1rem;
     background: #28a745;
     color: white;
@@ -1171,14 +1222,31 @@ p.philosophy-question {
 
 .editor-section-image {
     text-align: center;
-    margin: 2rem 0;
+    margin: 0.5rem 0;
 }
 
 .editor-section-text {
     margin: 2rem 0;
 }
+.editor-section-heading,
+.editor-section-content {
+    width: 100%;
+    height: 100%; /* Ensures the height matches the parent */
+    padding: 0.5rem 0; /* Removes any padding that could affect the size */
+    margin: 0; /* Removes any margin that could affect the size */
+    border: none; /* Removes the border to prevent size adjustments from border width */
+    resize: none; /* Prevents the user from resizing the text box */
+    box-sizing: border-box; /* Ensures padding is included in the width/height calculation */
+}
 
-
+.editor-section-content {
+    width: 100%; /* Fills the entire width of the parent */
+    height: auto; /* Adjusts height to fit content */
+    border: none; /* Removes border if it's not part of the parent */
+    box-sizing: border-box; /* Includes padding in the dimensions */
+    resize: none; /* Prevents user resizing */
+    overflow: hidden; /* Hides scrollbars until necessary */
+}
 
 
 
@@ -1304,6 +1372,57 @@ p.philosophy-question {
     }
 
     .review-card-body-container {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .editor-section-image {
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+    
+    .preview-area {
+        width: 100%;
+        height: 200px;
+        background: #f9fafb;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+    
+    .editor-section-image-preview {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+    
+    .placeholder {
+        color: #9ca3af;
+        font-size: 0.875rem;
+    }
+    
+    .controls-area {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .upload-status {
+        padding: 0.5rem;
+        background: #f3f4f6;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        text-align: center;
+    }
+    
+    .upload-status.hidden {
+        display: none;
+    }
+    .edit-review-card-body-container {
         flex-direction: column;
         gap: 10px;
     }

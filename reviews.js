@@ -64,7 +64,8 @@ async function fetchRecentReviews() {
                     cover_image,
                     latitude,
                     longitude,
-                    name
+                    name,
+                    category_id
                 )
             `)
             .order('publish_date', { ascending: false })
@@ -209,6 +210,7 @@ function displayReviews(reviews) {
 
             const reviewSlug = review.slug;
             const restaurant = review.restaurants;
+            console.log(review.restaurants);
             
             reviewElement.innerHTML = `
                 <div class="review-card-body-container" data-review-slug="${reviewSlug}" data-review-id="${review.id}" data-review-author="${review.authorDisplayName}">
@@ -230,7 +232,7 @@ function displayReviews(reviews) {
                                 <h1 id=rating-number>${review.rating}/10</h1>
                             </div>
                             <div class="cuisine-label-container"> 
-                                <h1 id=cuisine-label>${getCategoryById(category_to_id_map, review.category_id.toString())}</h1>
+                                <h1 id=cuisine-label>${getCategoryById(category_to_id_map, restaurant.category_id)}</h1>
                             </div>
                         </div>
                     </div>
@@ -346,7 +348,8 @@ async function loadFullReview(reviewSlug, reviewAuthorDisplayName = null) {
                     cover_image,
                     latitude,
                     longitude,
-                    name
+                    name,
+                    category_id
                 )
             `)
             .eq('restaurant_id', initialReview.restaurant_id);
@@ -718,7 +721,8 @@ async function searchReviews(
                         cover_image,
                         latitude,
                         longitude,
-                        name
+                        name,
+                        category_id
                     )
                 `);
 

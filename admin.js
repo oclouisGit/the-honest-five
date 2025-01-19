@@ -287,46 +287,130 @@ async function loadUserReviews(userId) {
             .from('reviews')
             .select(`
                 *,
-                restaurants (
+                restaurants!reviews_restaurant_id_fkey (
                     id,
-                    name
-                ),
-                categories (
-                    id,
-                    category
+                    cover_image,
+                    latitude,
+                    longitude,
+                    name,
+                    category_id
                 )
             `)
             .eq('author', userId);
 
         if (error) throw error;
-
-        const reviewList = document.getElementById('reviewList');
-        reviewList.innerHTML = reviews.map(review => `
-            <div class="review-card">
-                <div class="review-info">
-                    <h2>${security.sanitizeInput(review.restaurants?.name || 'Unnamed Restaurant')}</h2>
-                    <div class="review-meta">
-                        <span>Rating: ${review.rating}/10</span>
-                        <span>Category: ${security.sanitizeInput(review.categories?.category || 'Uncategorized')}</span>
-                    </div>
-                    <p>${'Summary: ' + security.sanitizeInput(review.summary)}</p>
-                </div>
-                <div class="review-actions">
-                    <button class="btn btn-secondary" onclick="editReview('${review.id}')">Edit</button>
-                    <button class="btn btn-danger" onclick="deleteReview('${review.id}')">Delete</button>
-                </div>
-            </div>
-        `).join('');
+        
+        const categoryMap = await fetchCategories();
+        displayReviews(reviews, categoryMap);
+        
     } catch (error) {
         console.error('Error loading reviews:', error);
         ui.showError('Error loading reviews. Please try again.');
     }
 }
 
+
+
+
+let category_to_id_map = {};
+
+async function fetchCategories() {
+    try {
+        console.log("Attempting to fetch categories...");
+        const { data, error } = await supabase
+            .from('categories')
+            .select('*');
+
+        if (error) {
+            throw error;
+        }
+
+        if (!data || data.length === 0) {
+            container.innerHTML = '<p>No categories found.</p>';
+            return;
+        }
+
+        // Clear and repopulate the map
+        category_to_id_map = {};
+        data.forEach((category) => {
+            category_to_id_map[category.id] = category.category;  
+        });
+
+    } catch (error) {
+        console.error('Error in fetchCategories:', error);
+        if (container) {
+            container.innerHTML = `<p>Error loading categories: ${error.message}</p>`;
+        }
+    }
+}
+
+// Keep this as a regular function, not async
+function getCategoryById(categoryMap, targetId) {
+    return categoryMap[targetId] || 'Uncategorized';
+}
+
+function displayReviews(reviews) {
+    try {
+        console.log("Starting to display reviews...");
+        const reviewList = document.getElementById('reviewList');
+        
+        reviewList.innerHTML = '';
+
+        reviews.forEach(review => {
+            const reviewElement = document.createElement('div');
+            reviewElement.classList.add('review-card');
+
+            const reviewSlug = review.slug;
+            const restaurant = review.restaurants;
+            const categoryName = getCategoryById(category_to_id_map, restaurant?.category_id);
+            
+            reviewElement.innerHTML = `
+                <div class="edit-review-card-body-container">
+                    <div class="review-cover-image"> 
+                        <img src=${review.cover_image || 'No image available'}>
+                    </div>
+                    <div class="non-image-review-container"> 
+                        <div class="review-text-container"> 
+                            <h1>${restaurant.name || 'Untitled'}</h1>
+                            <p><strong>Reviewer:</strong> ${review.authorDisplayName}</p>
+                            <p>${review.summary || 'No summary available'}</p>
+                        </div>
+
+                        <div class="right-sidebar">
+                            <div class="rating-number-container"> 
+                                <h1 id=rating-number>${review.rating}/10</h1>
+                            </div>
+                            <div class="cuisine-label-container"> 
+                                <h1 id=cuisine-label>${categoryName}</h1>
+                            </div>
+                            <div class="review-actions">
+                                <button class="btn edit-button" onclick="editReview('${review.id}')">Edit</button>
+                                <button class="btn delete-button" onclick="deleteReview('${review.id}')">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            reviewList.appendChild(reviewElement);
+        });
+
+        console.log('Finished displaying reviews');
+    } catch (error) {
+        console.error('Error in displayReviews:', error);
+        const container = document.getElementById('review-list-container');
+        if (container) {
+            container.innerHTML = `<p>Error displaying reviews: ${error.message}</p>`;
+        }
+    }
+}
+
+
 function setupEventListeners() {
     const newReviewBtn = document.getElementById('newReviewBtn');
     const modalClose = document.querySelector('.modal-close');
     const addSectionBtn = document.getElementById('addSectionBtn');
+    const sectionTypeDropdown = document.getElementById('sectionTypeDropdown');
     
     if (newReviewBtn) {
         newReviewBtn.addEventListener('click', () => showReviewModal());
@@ -338,6 +422,17 @@ function setupEventListeners() {
     
     if (addSectionBtn) {
         addSectionBtn.addEventListener('click', toggleSectionDropdown);
+    }
+
+    // Event delegation for section type buttons
+    if (sectionTypeDropdown) {
+        sectionTypeDropdown.addEventListener('click', (e) => {
+            const button = e.target.closest('button');
+            if (button) {
+                const type = button.dataset.sectionType;
+                addNewSection(type);
+            }
+        });
     }
 }
 
@@ -409,16 +504,42 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Replace your old addNewSection function with this new one
+async function uploadImage(file, bucket = 'review-images') {
+    try {
+        if (!file) return null;
+        
+        const fileExt = file.name.split('.').pop().toLowerCase();
+        const fileName = `${crypto.randomUUID()}.${fileExt}`;
+        
+        const { data, error } = await supabase
+            .storage
+            .from(bucket)
+            .upload(fileName, file, {
+                cacheControl: '3600',
+                upsert: false
+            });
+
+        if (error) throw error;
+
+        const { data: { publicUrl } } = supabase
+            .storage
+            .from(bucket)
+            .getPublicUrl(fileName);
+
+        return publicUrl;
+    } catch (error) {
+        throw error;
+    }
+}
+
 function addNewSection(type, sectionData = null) {
     const sectionDiv = document.createElement('div');
     sectionDiv.className = 'editor-section';
-    
-    let sectionContent = '';
+    sectionDiv.dataset.sectionType = type;
     
     switch(type) {
         case 'heading':
-            sectionContent = `
+            sectionDiv.innerHTML = `
                 <button type="button" class="editor-section-remove" onclick="removeSection(this)">×</button>
                 <input type="text" 
                        class="editor-section-heading" 
@@ -428,25 +549,32 @@ function addNewSection(type, sectionData = null) {
             break;
             
         case 'image':
-            sectionContent = `
+            sectionDiv.innerHTML = `
                 <button type="button" class="editor-section-remove" onclick="removeSection(this)">×</button>
                 <div class="editor-section-image">
-                    <input type="url" 
-                           class="editor-section-image-url" 
-                           placeholder="Image URL"
-                           value="${security.sanitizeInput(sectionData?.image_url || '')}"
-                           onchange="previewImage(this)">
-                    ${sectionData?.image_url ? 
-                      `<img src="${security.sanitizeInput(sectionData.image_url)}" 
-                            class="editor-section-image-preview" 
-                            alt="Section image">` 
-                      : ''}
+                    <div class="preview-area">
+                        ${sectionData?.image_url ? 
+                          `<img src="${security.sanitizeInput(sectionData.image_url)}" 
+                                class="editor-section-image-preview" 
+                                alt="Preview">` 
+                          : '<div class="placeholder">No image selected</div>'}
+                    </div>
+                    <div class="controls-area">
+                        <input type="file" 
+                               class="editor-section-image-file" 
+                               accept="image/*"
+                               onchange="handleImageUpload(this)">
+                        <input type="hidden" 
+                               class="editor-section-image-url" 
+                               value="${security.sanitizeInput(sectionData?.image_url || '')}">
+                        <div class="upload-status hidden"></div>
+                    </div>
                 </div>
             `;
             break;
             
         case 'text':
-            sectionContent = `
+            sectionDiv.innerHTML = `
                 <button type="button" class="editor-section-remove" onclick="removeSection(this)">×</button>
                 <textarea class="editor-section-content" 
                           placeholder="Write your content here...">${security.sanitizeInput(sectionData?.text || '')}</textarea>
@@ -454,16 +582,46 @@ function addNewSection(type, sectionData = null) {
             break;
     }
     
-    sectionDiv.innerHTML = sectionContent;
-    sectionDiv.dataset.sectionType = type;
-    
     document.getElementById('sectionsList').appendChild(sectionDiv);
     document.getElementById('sectionTypeDropdown').classList.add('hidden');
 }
 
+async function handleImageUpload(input) {
+    const section = input.closest('.editor-section');
+    if (!section) return;
+
+    const previewArea = section.querySelector('.preview-area');
+    const urlInput = section.querySelector('.editor-section-image-url');
+    const status = section.querySelector('.upload-status');
+    
+    if (!previewArea || !urlInput || !status) return;
+    
+    try {
+        if (!input.files || !input.files[0]) return;
+        
+        status.textContent = 'Uploading...';
+        status.classList.remove('hidden');
+        
+        const publicUrl = await uploadImage(input.files[0]);
+        urlInput.value = publicUrl;
+        
+        previewArea.innerHTML = `
+            <img src="${security.sanitizeInput(publicUrl)}" 
+                 class="editor-section-image-preview" 
+                 alt="Preview">
+        `;
+        
+        status.classList.add('hidden');
+        
+    } catch (error) {
+        status.textContent = 'Upload failed. Please try again.';
+    }
+}
+
+
 // Remove a section from the form
 function removeSection(button) {
-    button.closest('.section-item').remove();
+    button.closest('.editor-section').remove();
 }
 
 function previewImage(input) {
@@ -690,6 +848,16 @@ async function handleReviewSubmit(event) {
     }
 }
 
+document.querySelectorAll('.editor-section-content').forEach((textarea) => {
+    textarea.style.height = 'auto'; // Reset height to auto
+    textarea.style.height = `${textarea.scrollHeight}px`; // Set height based on content
+
+    textarea.addEventListener('input', () => {
+        textarea.style.height = 'auto'; // Reset height to auto for recalculating
+        textarea.style.height = `${textarea.scrollHeight}px`; // Set height to fit content
+    });
+});
+
 // Make functions globally available
 window.signIn = signIn;
 window.signUp = signUp;
@@ -697,6 +865,8 @@ window.signOut = signOut;
 window.editReview = editReview;
 window.deleteReview = deleteReview;
 window.removeSection = removeSection;
+window.handleImageUpload = handleImageUpload;
+window.uploadImage = uploadImage;
 
 
 // Initialize when DOM is loaded
