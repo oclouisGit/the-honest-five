@@ -1077,7 +1077,7 @@ p.philosophy-question {
 
 .editor-basic-info {
     max-width: 800px;
-    margin: 0 auto 2rem auto;
+    margin: 0 auto 1rem auto;
 }
 
 .editor-rating-category {
@@ -1113,15 +1113,7 @@ p.philosophy-question {
     margin: 2rem auto;
 }
 
-.editor-section {
-    background: white;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    padding: 0 1.5rem;
-    margin-bottom: 0.5rem;
-    position: relative;
-    height: auto;
-}
+
 
 
 .editor-section-remove {
@@ -1280,11 +1272,117 @@ p.philosophy-question {
     overflow: hidden; /* Hides scrollbars until necessary */
 }
 
+/* Editor section container */
+.editor-section {
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    padding: 0px 5px;
+    position: relative;
+    width: 100%;
+}
+
+/* Quill editor container */
+.editor-section .editor-section-content {
+    width: 100%;
+}
+
+/* Quill editor itself */
+.editor-section .quill-editor {
+    width: 100%;
+    transition: height 0.2s ease;
+}
+
+/* Quill toolbar */
+.editor-section .ql-toolbar.ql-snow {
+    border: none;
+    padding: 8px 0;
+    width: 100%;
+    box-sizing: border-box;
+    border-bottom: 1px solid #ccc;
+}
+
+/* Quill content area */
+.editor-section .ql-container.ql-snow {
+    border: none;
+    width: 100%;
+    box-sizing: border-box;
+    height: auto;
+}
+
+/* Editor content area */
+.editor-section .ql-editor {
+    padding: 12px 0;
+    height: auto;
+    min-height: 50px; /* Reduced minimum height */
+    overflow-y: hidden;
+}
+
+/* Ensure proper box sizing for all elements */
+.editor-section *,
+.editor-section *:before,
+.editor-section *:after {
+    box-sizing: border-box;
+}
+
+/* Add smooth transition for height changes */
+.editor-section .ql-container {
+    transition: height 0.2s ease;
+}
+
+.preview-area .placeholder {
+    padding: 20px;
+    text-align: center;
+    color: #666;
+}
+
+#restaurantImage {
+    margin-bottom: 10px;
+}
 
 
 
 
 
+
+.address-input-container {
+    position: relative;
+    width: 100%;
+}
+
+.address-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.address-dropdown.hidden {
+    display: none;
+}
+
+.address-option {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+
+.address-option:hover {
+    background-color: #f5f5f5;
+}
+
+.address-option:last-child {
+    border-bottom: none;
+}
 /* ====== Responsive Styles ====== */
 @media (max-width: 700px) {
     .content-wrapper {
@@ -1414,16 +1512,28 @@ p.philosophy-question {
         margin: 1rem 0;
     }
     
-    .preview-area {
-        width: 100%;
-        height: 200px;
-        background: #f9fafb;
+    .preview-image {
+        max-width: 100%;
+        max-height: 300px; /* Match the review editor image height */
+        width: auto;
+        height: auto;
+        object-fit: contain;
         border-radius: 4px;
-        margin-bottom: 1rem;
+    }
+    
+    .image-preview {
+        margin-top: 10px;
+        border: 2px dashed #ddd;
+        padding: 10px;
+        border-radius: 4px;
         display: flex;
         align-items: center;
         justify-content: center;
-        overflow: hidden;
+        min-height: 100px;
+    }
+    
+    .image-preview .placeholder {
+        color: #999;
     }
     
     .editor-section-image-preview {

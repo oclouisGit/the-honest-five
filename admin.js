@@ -539,6 +539,7 @@ function addNewSection(type, sectionData = null) {
     
     switch(type) {
         case 'heading':
+            // Heading section remains the same
             sectionDiv.innerHTML = `
                 <button type="button" class="editor-section-remove" onclick="removeSection(this)">×</button>
                 <input type="text" 
@@ -548,7 +549,55 @@ function addNewSection(type, sectionData = null) {
             `;
             break;
             
+        case 'text':
+            sectionDiv.innerHTML = `
+                <button type="button" class="editor-section-remove" onclick="removeSection(this)">×</button>
+                <div class="editor-section-content">
+                    <div class="quill-editor"></div>
+                    <input type="hidden" class="quill-content">
+                </div>
+            `;
+            
+            document.getElementById('sectionsList').appendChild(sectionDiv);
+            
+            const editor = new Quill(sectionDiv.querySelector('.quill-editor'), {
+                theme: 'snow',
+                modules: {
+                    toolbar: [
+                        ['bold', 'italic', 'underline'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        ['link'],
+                        ['clean']
+                    ]
+                }
+            });
+            
+            // Set initial content if exists
+            if (sectionData?.text) {
+                editor.root.innerHTML = sectionData.text;
+            }
+            
+            // Function to update editor height
+            const updateHeight = () => {
+                const editorContainer = editor.container;
+                const scrollHeight = editor.root.scrollHeight;
+                editorContainer.style.height = scrollHeight + 'px';
+            };
+            
+            // Update height on text change
+            editor.on('text-change', () => {
+                updateHeight();
+                // Update hidden input
+                sectionDiv.querySelector('.quill-content').value = editor.root.innerHTML;
+            });
+            
+            // Initial height update
+            setTimeout(updateHeight, 0);
+            
+            return;
+            
         case 'image':
+            // Image section remains the same
             sectionDiv.innerHTML = `
                 <button type="button" class="editor-section-remove" onclick="removeSection(this)">×</button>
                 <div class="editor-section-image">
@@ -570,14 +619,6 @@ function addNewSection(type, sectionData = null) {
                         <div class="upload-status hidden"></div>
                     </div>
                 </div>
-            `;
-            break;
-            
-        case 'text':
-            sectionDiv.innerHTML = `
-                <button type="button" class="editor-section-remove" onclick="removeSection(this)">×</button>
-                <textarea class="editor-section-content" 
-                          placeholder="Write your content here...">${security.sanitizeInput(sectionData?.text || '')}</textarea>
             `;
             break;
     }
@@ -783,7 +824,6 @@ async function handleReviewSubmit(event) {
 
         console.log('Processing sections for review:', savedReviewId);
 
-        // Handle sections
         const sections = Array.from(document.querySelectorAll('.editor-section'))
             .map((section, index) => {
                 const type = section.dataset.sectionType;
@@ -802,15 +842,15 @@ async function handleReviewSubmit(event) {
                         );
                         break;
                         
+                    case 'text':
+                        // Get content directly from Quill editor
+                        const quillContent = section.querySelector('.quill-content').value;
+                        baseSection.text = quillContent; // Note: We're not sanitizing this since Quill handles it
+                        break;
+                        
                     case 'image':
                         baseSection.image_url = security.sanitizeInput(
                             section.querySelector('.editor-section-image-url').value.trim()
-                        );
-                        break;
-                        
-                    case 'text':
-                        baseSection.text = security.sanitizeInput(
-                            section.querySelector('.editor-section-content').value.trim()
                         );
                         break;
                 }
@@ -848,6 +888,280 @@ async function handleReviewSubmit(event) {
     }
 }
 
+// Restaurant Modal UI Elements
+const restaurantModal = document.getElementById('restaurantModal');
+const restaurantForm = document.getElementById('restaurantForm');
+const newRestaurantBtn = document.getElementById('newRestaurantBtn');
+const modalCloseRestaurant = document.querySelector('.modal-close-restaurant');
+
+// Show the restaurant modal
+async function showRestaurantModal(restaurantData = null) {
+    const form = document.getElementById('modalRestaurantForm');
+    if (form) form.reset();
+    
+    document.getElementById('restaurantId').value = '';
+    document.getElementById('latitude').value = '';
+    document.getElementById('longitude').value = '';
+    
+    const previewArea = document.getElementById('imagePreview');
+    if (previewArea) {
+        previewArea.innerHTML = '<div class="placeholder">No image selected</div>';
+    }
+    try {
+        const { data: categories, error } = await supabase
+            .from('categories')
+            .select('*')
+            .order('category');
+
+        if (error) throw error;
+
+        const categorySelect = document.getElementById('restaurantCategory');
+        if (categorySelect) {
+            categorySelect.innerHTML = `
+                <option value="">Select Category</option>
+                ${categories.map(cat => 
+                    `<option value="${cat.id}">${security.sanitizeInput(cat.category)}</option>`
+                ).join('')}
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading categories:', error);
+        ui.showError('Error loading categories. Please try again.');
+    }
+    
+    restaurantModal.style.display = 'flex';
+}
+
+// Hide the restaurant modal
+function hideRestaurantModal() {
+    const modal = document.getElementById('restaurantModal');
+    const form = document.getElementById('modalRestaurantForm');
+    if (modal) modal.style.display = 'none';
+    if (form) form.reset();
+    
+    // Reset preview
+    const previewArea = document.getElementById('imagePreview');
+    if (previewArea) {
+        previewArea.innerHTML = '<div class="placeholder">No image selected</div>';
+    }
+}
+
+// Handle image upload and preview
+function handleRestaurantImageUpload(input) {
+    const section = input.closest('.editor-section');
+    const previewArea = section.querySelector('.preview-area');
+    const file = input.files[0];
+    
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            previewArea.innerHTML = `<img src="${e.target.result}" class="editor-section-image-preview" alt="Preview">`;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+// Look up address coordinates using OpenStreetMap's Nominatim API
+async function lookupAddress() {
+    const address = document.getElementById('address').value.trim();
+    const statusElement = document.getElementById('addressStatus');
+    
+    if (!address) {
+        statusElement.textContent = 'Please enter an address';
+        return;
+    }
+    
+    try {
+        statusElement.textContent = 'Looking up address...';
+        
+        const response = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`
+        );
+        const data = await response.json();
+        
+        if (data && data[0]) {
+            document.getElementById('latitude').value = data[0].lat;
+            document.getElementById('longitude').value = data[0].lon;
+            statusElement.textContent = 'Address found!';
+            setTimeout(() => {
+                statusElement.textContent = '';
+            }, 2000);
+        } else {
+            statusElement.textContent = 'Address not found';
+        }
+    } catch (error) {
+        console.error('Error looking up address:', error);
+        statusElement.textContent = 'Error looking up address';
+    }
+}
+
+// Handle form submission
+async function handleRestaurantSubmit(event) {
+    event.preventDefault();
+    
+    try {
+        const name = security.sanitizeInput(document.getElementById('restaurantName').value.trim());
+        const categoryId = document.getElementById('restaurantCategory').value;
+        const latitude = document.getElementById('latitude').value;
+        const longitude = document.getElementById('longitude').value;
+        const imageInput = document.getElementById('restaurantImage');
+        
+        // Validate required fields
+        if (!name || !categoryId) {
+            throw new Error('Please fill in all required fields');
+        }
+        
+        // Handle image upload if there's a new image
+        let imageUrl = '';
+        if (imageInput.files && imageInput.files[0]) {
+            imageUrl = await uploadImage(imageInput.files[0], 'review-images');
+        }
+        
+        // Create restaurant data object
+        const restaurantData = {
+            name,
+            category_id: categoryId,
+            latitude: latitude || null,
+            longitude: longitude || null,
+            cover_image: imageUrl
+        };
+        
+        // For now, only handle new restaurant creation
+        const result = await supabase
+            .from('restaurants')
+            .insert([restaurantData])
+            .select();
+            
+        if (result.error) throw result.error;
+        
+        // Hide modal and reset form
+        hideRestaurantModal();
+        
+    } catch (error) {
+        console.error('Error saving restaurant:', error);
+        ui.showError(`Error saving restaurant: ${error.message}`);
+    }
+}
+
+// Set up event listeners
+function setupRestaurantEventListeners() {
+    const newRestaurantBtn = document.getElementById('newRestaurantBtn');
+    const modalClose = document.querySelector('#restaurantModal .modal-close');
+    const restaurantForm = document.getElementById('modalRestaurantForm');
+    
+    if (newRestaurantBtn) {
+        newRestaurantBtn.addEventListener('click', () => showRestaurantModal());
+    }
+    
+    if (modalClose) {
+        modalClose.addEventListener('click', hideRestaurantModal);
+    }
+    
+    if (restaurantForm) {
+        restaurantForm.addEventListener('submit', handleRestaurantSubmit);
+    }
+
+    // Set up address autocomplete
+    setupAddressAutocomplete();
+}
+
+let addressTimeout = null;
+
+// Set up address autocomplete
+function setupAddressAutocomplete() {
+    const addressInput = document.getElementById('address');
+    const dropdown = document.getElementById('addressDropdown');
+
+    addressInput.addEventListener('input', (e) => {
+        const query = e.target.value.trim();
+        
+        // Clear existing timeout
+        if (addressTimeout) {
+            clearTimeout(addressTimeout);
+        }
+        
+        // Hide dropdown if input is empty
+        if (!query) {
+            dropdown.classList.add('hidden');
+            return;
+        }
+        
+        // Debounce the search
+        addressTimeout = setTimeout(async () => {
+            try {
+                // Call OpenStreetMap API
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`
+                );
+                const results = await response.json();
+                
+                // Display results
+                displayAddressResults(results);
+            } catch (error) {
+                console.error('Error fetching addresses:', error);
+            }
+        }, 300); // Wait 300ms after user stops typing
+    });
+    
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!addressInput.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+    
+    // Show dropdown when focusing on input if it has value
+    addressInput.addEventListener('focus', () => {
+        if (addressInput.value.trim()) {
+            dropdown.classList.remove('hidden');
+        }
+    });
+}
+
+// Display address search results
+function displayAddressResults(results) {
+    const dropdown = document.getElementById('addressDropdown');
+    
+    if (!results.length) {
+        dropdown.classList.add('hidden');
+        return;
+    }
+    
+    dropdown.innerHTML = results
+        .slice(0, 5) // Limit to 5 results
+        .map(result => {
+            const displayName = security.sanitizeInput(result.display_name);
+            return `
+                <div class="address-option" 
+                     data-lat="${result.lat}" 
+                     data-lon="${result.lon}"
+                     data-name="${displayName}">
+                    ${displayName}
+                </div>
+            `;
+        })
+        .join('');
+    
+    dropdown.classList.remove('hidden');
+    
+    // Add click handlers to options
+    dropdown.querySelectorAll('.address-option').forEach(option => {
+        option.addEventListener('click', () => {
+            const lat = option.dataset.lat;
+            const lon = option.dataset.lon;
+            const name = option.dataset.name;
+            
+            // Update form fields
+            document.getElementById('address').value = name;
+            document.getElementById('latitude').value = lat;
+            document.getElementById('longitude').value = lon;
+            
+            // Hide dropdown
+            dropdown.classList.add('hidden');
+        });
+    });
+}
+
 document.querySelectorAll('.editor-section-content').forEach((textarea) => {
     textarea.style.height = 'auto'; // Reset height to auto
     textarea.style.height = `${textarea.scrollHeight}px`; // Set height based on content
@@ -867,7 +1181,16 @@ window.deleteReview = deleteReview;
 window.removeSection = removeSection;
 window.handleImageUpload = handleImageUpload;
 window.uploadImage = uploadImage;
+window.showRestaurantModal = showRestaurantModal;
+window.hideRestaurantModal = hideRestaurantModal;
+window.handleRestaurantImageUpload = handleRestaurantImageUpload;
+window.lookupAddress = lookupAddress;
+
 
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', initializeAdmin);
+document.addEventListener('DOMContentLoaded', setupRestaurantEventListeners);
+document.addEventListener('DOMContentLoaded', () => {
+    setupAddressAutocomplete();
+});
