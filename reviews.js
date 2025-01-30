@@ -52,7 +52,7 @@ async function fetchRecentReviews() {
             throw new Error('Reviews container not found in DOM');
         }
 
-        container.innerHTML = '<p>Loading reviews...</p>';
+        container.innerHTML = createLoadingReviews(5);
 
         // First get the reviews with restaurant info
         const { data: reviews, error } = await supabase
@@ -100,6 +100,16 @@ async function fetchRecentReviews() {
             container.innerHTML = `<p>Error loading reviews: ${error.message}</p>`;
         }
     }
+}
+
+function createLoadingReviews(count) {
+    const loadingHTML = `
+        <div class="review-card loading">
+
+        </div>
+    `;
+
+    return Array(count).fill(loadingHTML).join('');
 }
 
 let category_to_id_map = {};
@@ -201,7 +211,6 @@ function displayReviews(reviews) {
     try {
         console.log("Starting to display reviews...");
         const reviewsContainer = document.getElementById('review-list-container');
-        
         reviewsContainer.innerHTML = '';
 
         reviews.forEach(review => {
@@ -733,9 +742,11 @@ async function searchReviews(
 
             // Add search term filter (now including restaurant name)
             if (searchTerm.trim() !== '') {
-                query = query.or(`restaurants.name.ilike.%${searchTerm}%,summary.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`);
+                query = query.or([
+                    { summary: { ilike: `%${searchTerm}%` } },
+                    { 'restaurants.name': { ilike: `%${searchTerm}%` } }
+                ]);
             }
-
             // Add rating range filter
             if (ratingMin !== 0 || ratingMax !== 10) {
                 query = query.gte('rating', ratingMin).lte('rating', ratingMax);

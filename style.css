@@ -380,6 +380,38 @@ canvas{
     height: 115px;
 }
 
+/* loading-styles.css */
+.review-card.loading {
+    animation: fadeIn 0.5s ease-in;
+    margin-bottom: 20px;
+    background: linear-gradient(110deg, #e0e0e0 8%, #f8f8f8 18%, #e0e0e0 33%);
+
+
+    background-size: 200% 100%;
+    animation: shimmer 1.5s linear infinite;
+}
+
+
+
+
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
 /* I might want a line here - can't decide */
 .plus-and-minus-container {
     display: flex;
