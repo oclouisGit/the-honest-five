@@ -1156,7 +1156,7 @@ p.philosophy-question {
 .editor-section-content {
     width: 100%;
     min-height: 200px;
-    padding: 0.5rem;
+    padding: 0rem;
     border: 1px solid #ccc;
     border-radius: 4px;
     font-family: Georgia, 'Times New Roman', Times, serif;
@@ -1248,7 +1248,7 @@ p.philosophy-question {
 
 .editor-section-image {
     text-align: center;
-    margin: 0.5rem 0;
+    margin: 1rem  0 0.5rem 0;
 }
 
 .editor-section-text {
@@ -1258,7 +1258,7 @@ p.philosophy-question {
 .editor-section-content {
     width: 100%;
     height: 100%; /* Ensures the height matches the parent */
-    padding: 0.5rem 0; /* Removes any padding that could affect the size */
+    padding:  0 0 0.5rem 0; /* Removes any padding that could affect the size */
     margin: 0; /* Removes any margin that could affect the size */
     border: none; /* Removes the border to prevent size adjustments from border width */
     resize: none; /* Prevents the user from resizing the text box */
@@ -1347,6 +1347,49 @@ p.philosophy-question {
 
 
 
+
+.drag-handle {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 0px;
+    background-color: white;
+    border-radius: 0.5rem 0.5rem 0 0;
+    cursor: grab;
+    color: black;
+    user-select: none;
+    font-size: 10px;
+    line-height: 18px;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.drag-handle:hover {
+    background-color: #e2e8f0;
+    color: #475569;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+/* Sortable states */
+.sortable-ghost {
+    opacity: 0.5;
+    background-color: #f8fafc;
+    border: 2px dashed #94a3b8;
+}
+
+.sortable-chosen {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+.sortable-drag {
+    opacity: 1;
+    background-color: white;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+}
 
 .address-input-container {
     position: relative;

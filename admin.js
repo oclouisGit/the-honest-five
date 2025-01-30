@@ -3,6 +3,8 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const supabaseUrl = 'https://ecsqqzuguvdrhlqsbjci.supabase.co'
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjc3FxenVndXZkcmhscXNiamNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzE1NDc2NjQsImV4cCI6MjA0NzEyMzY2NH0.GOWZP1KYpl_tAGjH2FL_16UPkkcpyQB17tWQnDbzBik'
 
+let sectionsSortable;
+
 // Initialize Supabase client with enhanced security options
 const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: {
@@ -269,6 +271,9 @@ async function initializeAdmin() {
             ).join('');
         }
 
+        // Initialize Sortable
+        initializeSortable();
+
         // Load user's reviews
         await loadUserReviews(session.user.id);
 
@@ -470,7 +475,9 @@ function showReviewModal(reviewData = null) {
     }
     
     reviewModal.style.display = 'flex';
-    setupFormListener(); // Add this line to set up the form listener
+    setupFormListener(); 
+
+    initializeSortable();
 }
 
 // Hide the review modal
@@ -539,12 +546,19 @@ async function uploadImage(file, bucket = 'review-images') {
 function addNewSection(type, sectionData = null) {
     const sectionDiv = document.createElement('div');
     sectionDiv.className = 'editor-section';
-    sectionDiv.dataset.sectionType = type;
+    
+    // Create drag handle
+    const dragHandle = document.createElement('div');
+    dragHandle.className = 'drag-handle';
+    dragHandle.innerHTML = '⠿⠿⠿';
+    sectionDiv.appendChild(dragHandle);
+    
+    // Create content container
+    const contentDiv = document.createElement('div');
     
     switch(type) {
         case 'heading':
-            // Heading section remains the same
-            sectionDiv.innerHTML = `
+            contentDiv.innerHTML = `
                 <button type="button" class="editor-section-remove" onclick="removeSection(this)">×</button>
                 <input type="text" 
                        class="editor-section-heading" 
@@ -554,55 +568,17 @@ function addNewSection(type, sectionData = null) {
             break;
             
         case 'text':
-            sectionDiv.innerHTML = `
+            contentDiv.innerHTML = `
                 <button type="button" class="editor-section-remove" onclick="removeSection(this)">×</button>
                 <div class="editor-section-content">
                     <div class="quill-editor"></div>
                     <input type="hidden" class="quill-content">
                 </div>
             `;
-            
-            document.getElementById('sectionsList').appendChild(sectionDiv);
-            
-            const editor = new Quill(sectionDiv.querySelector('.quill-editor'), {
-                theme: 'snow',
-                modules: {
-                    toolbar: [
-                        ['bold', 'italic', 'underline'],
-                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                        ['link'],
-                        ['clean']
-                    ]
-                }
-            });
-            
-            // Set initial content if exists
-            if (sectionData?.text) {
-                editor.root.innerHTML = sectionData.text;
-            }
-            
-            // Function to update editor height
-            const updateHeight = () => {
-                const editorContainer = editor.container;
-                const scrollHeight = editor.root.scrollHeight;
-                editorContainer.style.height = scrollHeight + 'px';
-            };
-            
-            // Update height on text change
-            editor.on('text-change', () => {
-                updateHeight();
-                // Update hidden input
-                sectionDiv.querySelector('.quill-content').value = editor.root.innerHTML;
-            });
-            
-            // Initial height update
-            setTimeout(updateHeight, 0);
-            
-            return;
+            break;
             
         case 'image':
-            // Image section remains the same
-            sectionDiv.innerHTML = `
+            contentDiv.innerHTML = `
                 <button type="button" class="editor-section-remove" onclick="removeSection(this)">×</button>
                 <div class="editor-section-image">
                     <div class="preview-area">
@@ -627,7 +603,27 @@ function addNewSection(type, sectionData = null) {
             break;
     }
     
+    sectionDiv.appendChild(contentDiv);
     document.getElementById('sectionsList').appendChild(sectionDiv);
+    
+    if (type === 'text') {
+        const editor = new Quill(sectionDiv.querySelector('.quill-editor'), {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    ['bold', 'italic', 'underline'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    ['link'],
+                    ['clean']
+                ]
+            }
+        });
+        
+        if (sectionData?.text) {
+            editor.root.innerHTML = sectionData.text;
+        }
+    }
+    
     document.getElementById('sectionTypeDropdown').classList.add('hidden');
 }
 
@@ -698,16 +694,18 @@ async function loadReviewSections(reviewId) {
         sectionsList.innerHTML = '';
         
         sections.forEach(section => {
-            if (section.heading) {
-                addNewSection('heading', section);
-            }
-            if (section.image_url) {
-                addNewSection('image', section);
-            }
-            if (section.text) {
-                addNewSection('text', section);
+            let type;
+            if (section.heading !== null) type = 'heading';
+            else if (section.text !== null) type = 'text';
+            else if (section.image_url !== null) type = 'image';
+            
+            if (type) {
+                addNewSection(type, section);
             }
         });
+        
+        // Reinitialize sortable after loading sections
+        initializeSortable();
     } catch (error) {
         console.error('Error loading sections:', error);
         ui.showError('Error loading review sections. Please try again.');
@@ -902,37 +900,40 @@ async function handleReviewSubmit(event) {
             if (deleteError) throw deleteError;
         }
 
-        // Prepare sections data
         const sections = Array.from(document.querySelectorAll('.editor-section'))
-            .map((section, index) => {
-                const type = section.dataset.sectionType;
-                const baseSection = {
-                    review_id: savedReviewId,
-                    order: index,
-                    heading: null,
-                    text: null,
-                    image_url: null
-                };
-                
-                switch(type) {
-                    case 'heading':
-                        baseSection.heading = security.sanitizeInput(
-                            section.querySelector('.editor-section-heading').value.trim()
-                        );
-                        break;
-                    case 'text':
-                        const quillContent = section.querySelector('.quill-content').value;
-                        baseSection.text = quillContent;
-                        break;
-                    case 'image':
-                        baseSection.image_url = security.sanitizeInput(
-                            section.querySelector('.editor-section-image-url').value.trim()
-                        );
-                        break;
+        .map((section, index) => {
+            const baseSection = {
+                review_id: savedReviewId,
+                order: index,
+                heading: null,
+                text: null,
+                image_url: null
+            };
+            
+            // Find heading input
+            const headingInput = section.querySelector('.editor-section-heading');
+            if (headingInput) {
+                baseSection.heading = security.sanitizeInput(headingInput.value.trim());
+            }
+            
+            // Find Quill editor
+            const quillContainer = section.querySelector('.quill-editor');
+            if (quillContainer) {
+                const quillEditor = Quill.find(quillContainer);
+                if (quillEditor) {
+                    baseSection.text = quillEditor.root.innerHTML;
                 }
-                
-                return baseSection;
-            });
+            }
+            
+            // Find image URL
+            const imageUrlInput = section.querySelector('.editor-section-image-url');
+            if (imageUrlInput) {
+                baseSection.image_url = security.sanitizeInput(imageUrlInput.value.trim());
+            }
+            
+            return baseSection;
+        })
+        .filter(section => section.heading || section.text || section.image_url);
 
         // Insert new sections if any exist
         if (sections.length > 0) {
@@ -1234,6 +1235,72 @@ document.querySelectorAll('.editor-section-content').forEach((textarea) => {
         textarea.style.height = `${textarea.scrollHeight}px`; // Set height to fit content
     });
 });
+
+
+function initializeSortable() {
+    const sectionsList = document.getElementById('sectionsList');
+    if (sectionsList) {
+        if (sectionsSortable) {
+            sectionsSortable.destroy(); // Destroy existing instance if it exists
+        }
+        
+        sectionsSortable = new Sortable(sectionsList, {
+            animation: 150,
+            handle: '.drag-handle',
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            dragClass: 'sortable-drag',
+            onEnd: function(evt) {
+                console.log('Drag ended, reinitializing content...');
+                // Reinitialize Quill editor in the moved section if it exists
+                const movedSection = evt.item;
+                const quillContainer = movedSection.querySelector('.quill-editor');
+                if (quillContainer) {
+                    // Store the content before destroying
+                    let content = '';
+                    const existingEditor = Quill.find(quillContainer);
+                    if (existingEditor) {
+                        content = existingEditor.root.innerHTML;
+                        // Remove the editor's wrapper element
+                        const editorWrapper = quillContainer.querySelector('.ql-container');
+                        if (editorWrapper) {
+                            editorWrapper.remove();
+                        }
+                        // Remove toolbar
+                        const toolbar = quillContainer.querySelector('.ql-toolbar');
+                        if (toolbar) {
+                            toolbar.remove();
+                        }
+                    }
+                    
+                    console.log('Reinitializing Quill editor...');
+                    const editor = new Quill(quillContainer, {
+                        theme: 'snow',
+                        modules: {
+                            toolbar: [
+                                ['bold', 'italic', 'underline'],
+                                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                ['link'],
+                                ['clean']
+                            ]
+                        }
+                    });
+                    
+                    // Restore the content
+                    if (content) {
+                        editor.root.innerHTML = content;
+                    } else {
+                        // Fallback to hidden input if available
+                        const contentInput = movedSection.querySelector('.quill-content');
+                        if (contentInput && contentInput.value) {
+                            editor.root.innerHTML = contentInput.value;
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
 
 // Make functions globally available
 window.signIn = signIn;

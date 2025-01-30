@@ -598,24 +598,39 @@ function renderFullReview(reviews, sectionsByReview, initialReviewId) {
 function renderSections(sections) {
     return sections.map(section => {
         let sectionHTML = '';
+        
+        // Handle the heading if present
         if (section.heading) {
             sectionHTML += `<h2 class="section-heading">${section.heading}</h2>`;
         }
 
+        // Handle sections with both image and text
         if (section.image_url && section.text) {
             sectionHTML += `
                 <div class="section-with-image-container">
                     <img src="${section.image_url}" alt="${section.heading || 'Review section image'}" class="section-with-image-image">
-                    <p class="section-text">${section.text}</p>
+                    <div class="section-text">${section.text}</div>
                 </div>`;
-        } else if (section.image_url) {
+        } 
+        // Handle image-only sections
+        else if (section.image_url) {
             sectionHTML += `
                 <div class="image-section-container">
                     <img src="${section.image_url}" alt="${section.heading || 'Review section image'}" class="image-section-image">
                 </div>`;
-        } else if (section.text) {
-            sectionHTML += `<p class="text-section-text">${section.text}</p>`;
+        } 
+        // Handle text-only sections
+        else if (section.text) {
+            // Check if the text contains HTML
+            if (section.text.includes('<p>') || section.text.includes('</p>')) {
+                // If it contains HTML, wrap it in a div with the text-section-text class
+                sectionHTML += `<div class="text-section-text">${section.text}</div>`;
+            } else {
+                // If it's plain text, wrap it in a p tag
+                sectionHTML += `<p class="text-section-text">${section.text}</p>`;
+            }
         }
+        
         return sectionHTML;
     }).join('');
 }
