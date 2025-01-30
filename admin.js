@@ -460,7 +460,6 @@ function showReviewModal(reviewData = null) {
         document.getElementById('reviewId').value = reviewData.id;
         document.getElementById('restaurantId').value = reviewData.restaurant_id;
         document.getElementById('rating').value = reviewData.rating;
-        document.getElementById('category').value = reviewData.category_id;
         document.getElementById('summary').value = reviewData.summary;
         
         loadReviewSections(reviewData.id);
@@ -819,13 +818,6 @@ async function deleteReview(reviewId) {
 
         // Reload the reviews list
         await loadUserReviews(session.user.id);
-        
-        // Show success message
-        const successMessage = document.createElement('div');
-        successMessage.textContent = 'Review deleted successfully';
-        successMessage.className = 'success-message';
-        document.body.appendChild(successMessage);
-        setTimeout(() => successMessage.remove(), 3000);
 
         console.log('Delete process completed successfully');
 
