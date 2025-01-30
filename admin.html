@@ -43,7 +43,17 @@
     <div id="userContainer" class="auth-container">
         <h2>Welcome!</h2>
         <p id="userEmail"></p>
+        
         <button onclick="signOut()" class="button">Sign Out</button>
+    </div>
+
+    <div class="admin-invite-container">
+        <h2>Invite New User</h2>
+        <div class="invite-form">
+            <input type="email" id="inviteEmail" placeholder="Enter email address">
+            <button class="button" onclick="sendInvite()">Send Invite</button>
+        </div>
+        <div id="inviteStatus"></div>
     </div>
 
     <div class="admin-container">
@@ -52,6 +62,7 @@
             <div class="admin-actions">
                 <button id="newRestaurantBtn" class="button">New Restaurant</button>
                 <button id="newReviewBtn" class="button">New Review</button>
+
             </div>
         </div>
 
@@ -69,11 +80,12 @@
                 <input type="hidden" id="reviewId">
                 
                 <!-- Basic Info Section -->
-                <div class="editor-basic-info">
+                <div class="editor-sections-list basics-section">
+                    <h3 >Restaurant</h3>
                     <select id="restaurantId" class="form-input" required>
                         <!-- Restaurants populated dynamically -->
                     </select>
-    
+                    <h3 >Rating</h3>
                     <div class="editor-rating-category">
     
                         <input type="number" 
@@ -85,16 +97,30 @@
                                placeholder="Rating (0-10)"
                                required>
                     </div>
+                
+
+                <!-- Review Cover Image Upload Section -->
+                <h3 >Review Cover Image</h3>
+                <div class="editor-section basics-section" id="cover_image_section">
+                    
+                    <div class="editor-section-image"  id="cover_image_content">
+
+                    </div>
                 </div>
     
                 <!-- Summary Section -->
-                <div class="editor-summary-container">
+                <h3 >Summary</h3>
+                <div class="editor-summary-container basics-section">
                     <textarea id="summary" 
                              class="editor-summary" 
                              placeholder="Write your summary here..."
                              required></textarea>
                 </div>
-    
+            </div>
+
+            <hr class="review-divider">
+            <h3 >Main Review Body</h3>
+
                 <!-- Sections -->
                 <div id="sectionsList" class="editor-sections-list">
                     <!-- Sections added dynamically -->

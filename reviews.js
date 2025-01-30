@@ -472,6 +472,9 @@ function renderFullReview(reviews, sectionsByReview, initialReviewId) {
                 reviewHTML += `
                     <div class="review-content ${isActive ? 'active' : 'hidden'}" 
                         data-review-id="${review.id}">
+                        <div class="full-review-cover-image"> 
+                            <img src="${review.cover_image || 'No image available'}" alt="${review.title}">
+                        </div>
                         <div class="gauge-card-container">
                             <p class="multiple-full-review-summary">${review.summary}</p>
                         </div>

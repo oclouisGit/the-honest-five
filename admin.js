@@ -85,6 +85,51 @@ const security = {
         this.attempts.delete(email)
     }
 }
+async function sendInvite() {
+    try {
+        const email = document.getElementById('inviteEmail').value.trim();
+        
+        if (!email) {
+            throw new Error('Please enter an email address');
+        }
+
+        // Check if user is allowed to send invites
+        const { data: inviter, error: inviterError } = await supabase
+            .from('authorized_inviters')
+            .select('can_invite')
+            .eq('id', (await supabase.auth.getUser()).data.user.id)
+            .single();
+
+        if (inviterError || !inviter || !inviter.can_invite) {
+            throw new Error('Not authorized to send invites');
+        }
+
+        // Send the invite
+        const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
+            redirectTo: `${window.location.origin}/invite`
+        });
+
+        if (error) throw error;
+
+        // Log the invite
+        const { error: logError } = await supabase
+            .from('invite_logs')
+            .insert([{
+                invited_email: email,
+                invited_by: (await supabase.auth.getUser()).data.user.id
+            }]);
+
+        if (logError) throw logError;
+
+        // Clear input and show success message
+        document.getElementById('inviteEmail').value = '';
+        ui.showInviteStatus('Invite sent successfully!');
+
+    } catch (error) {
+        console.error('Error sending invite:', error);
+        ui.showInviteStatus(error.message, true);
+    }
+}
 
 const ui = {
     showAuthContainer() {
@@ -110,6 +155,16 @@ const ui = {
         document.getElementById('email').value = '';
         document.getElementById('password').value = '';
         document.getElementById('error').textContent = '';
+    },    
+    showInviteStatus(message, isError = false) {
+        const statusElement = document.getElementById('inviteStatus');
+        if (statusElement) {
+            statusElement.textContent = message;
+            statusElement.className = isError ? 'error-message' : 'success-message';
+            setTimeout(() => {
+                statusElement.textContent = '';
+            }, 5000);
+        }
     }
 };
 
@@ -160,6 +215,8 @@ async function signIn() {
         ui.showError(error.message)
     }
 }
+
+
 
 async function signUp() {
     try {
@@ -216,10 +273,7 @@ supabase.auth.onAuthStateChange((event, session) => {
 // Initialization
 checkUser()
 
-// Make functions available globally (needed for HTML onclick handlers)
-window.signIn = signIn
-window.signUp = signUp
-window.signOut = signOut
+
 
 // Optional: Log when the script has loaded successfully
 console.log('Auth system initialized successfully')
@@ -291,10 +345,7 @@ async function loadUserReviews(userId) {
         const { data: reviews, error } = await supabase
             .from('reviews')
             .select(`
-                id,
-                rating,
-                summary,
-                author,
+                *,
                 restaurants!reviews_restaurant_id_fkey (
                     id,
                     cover_image,
@@ -372,7 +423,7 @@ function displayReviews(reviews) {
             const categoryName = getCategoryById(category_to_id_map, restaurant?.category_id);
             
             // Use review.cover_image if available, otherwise fallback to restaurant.cover_image
-            const coverImage = review.cover_image || restaurant?.cover_image || 'No image available';
+            const coverImage = review?.cover_image || restaurant.cover_image || 'No image available';
             
             reviewElement.innerHTML = `
                 <div class="edit-review-card-body-container">
@@ -466,7 +517,30 @@ function showReviewModal(reviewData = null) {
         document.getElementById('restaurantId').value = reviewData.restaurant_id;
         document.getElementById('rating').value = reviewData.rating;
         document.getElementById('summary').value = reviewData.summary;
-        
+        const sectionDiv = document.getElementById('cover_image_section');
+        const contentDiv = document.getElementById('cover_image_content');
+        contentDiv.innerHTML = `
+                <div class="editor-section-image">
+                    <div class="preview-area">
+                        ${reviewData?.cover_image ? 
+                        `<img src="${security.sanitizeInput(reviewData.cover_image)}" 
+                                class="editor-section-image-preview" 
+                                alt="Preview">` 
+                        : '<div class="placeholder">No image selected</div>'}
+                    </div>
+                    <div class="controls-area">
+                        <input type="file" 
+                            class="editor-section-image-file" 
+                            accept="image/*"
+                            onchange="handleImageUpload(this, '.editor-cover-image-url')">
+                        <input type="hidden" 
+                            class="editor-cover-image-url" 
+                            value="${security.sanitizeInput(reviewData?.cover_image || '')}">
+                        <div class="upload-status hidden"></div>
+                    </div>
+                </div>
+            `;
+        sectionDiv.appendChild(contentDiv);
         loadReviewSections(reviewData.id);
     } else {
         document.getElementById('modalReviewForm').reset();
@@ -627,12 +701,12 @@ function addNewSection(type, sectionData = null) {
     document.getElementById('sectionTypeDropdown').classList.add('hidden');
 }
 
-async function handleImageUpload(input) {
+async function handleImageUpload(input, url_bucket = '.editor-section-image-url') {
     const section = input.closest('.editor-section');
     if (!section) return;
 
     const previewArea = section.querySelector('.preview-area');
-    const urlInput = section.querySelector('.editor-section-image-url');
+    const urlInput = section.querySelector(url_bucket); // Default to section image URL input
     const status = section.querySelector('.upload-status');
     
     if (!previewArea || !urlInput || !status) return;
@@ -840,6 +914,14 @@ async function handleReviewSubmit(event) {
             throw new Error('No active session found');
         }
 
+        let cover_image_url = null;
+        // Handle cover image
+        const imageUrlInput = document.querySelector('.editor-cover-image-url');
+        if (imageUrlInput) {
+            cover_image_url = security.sanitizeInput(imageUrlInput.value.trim());
+        }
+        console.log('Cover image url to save', cover_image_url);
+
         // Create review data with all required fields
         const reviewData = {
             restaurant_id: restaurantId,
@@ -850,7 +932,8 @@ async function handleReviewSubmit(event) {
             tags: [],
             plusses: [],
             minuses: [],
-            title: summary.substring(0, 100)
+            title: summary.substring(0, 100),
+            cover_image: cover_image_url
         };
 
         console.log('Saving review with data:', reviewData);
@@ -1304,7 +1387,7 @@ function initializeSortable() {
 
 // Make functions globally available
 window.signIn = signIn;
-window.signUp = signUp;
+window.sendInvite = sendInvite;
 window.signOut = signOut;
 window.editReview = editReview;
 window.deleteReview = deleteReview;
