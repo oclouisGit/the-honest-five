@@ -286,7 +286,10 @@ async function loadUserReviews(userId) {
         const { data: reviews, error } = await supabase
             .from('reviews')
             .select(`
-                *,
+                id,
+                rating,
+                summary,
+                author,
                 restaurants!reviews_restaurant_id_fkey (
                     id,
                     cover_image,
@@ -360,19 +363,21 @@ function displayReviews(reviews) {
             const reviewElement = document.createElement('div');
             reviewElement.classList.add('review-card');
 
-            const reviewSlug = review.slug;
             const restaurant = review.restaurants;
             const categoryName = getCategoryById(category_to_id_map, restaurant?.category_id);
+            
+            // Use review.cover_image if available, otherwise fallback to restaurant.cover_image
+            const coverImage = review.cover_image || restaurant?.cover_image || 'No image available';
             
             reviewElement.innerHTML = `
                 <div class="edit-review-card-body-container">
                     <div class="review-cover-image"> 
-                        <img src=${review.cover_image || 'No image available'}>
+                        <img src="${coverImage}" alt="${restaurant?.name || 'Review image'}">
                     </div>
                     <div class="non-image-review-container"> 
                         <div class="review-text-container"> 
-                            <h1>${restaurant.name || 'Untitled'}</h1>
-                            <p><strong>Reviewer:</strong> ${review.authorDisplayName}</p>
+                            <h1>${restaurant?.name || 'Untitled'}</h1>
+                            <p><strong>Reviewer:</strong> ${review.author_display_name || 'Anonymous'}</p>
                             <p>${review.summary || 'No summary available'}</p>
                         </div>
 
@@ -741,98 +746,180 @@ async function editReview(reviewId) {
     }
 }
 
-// Delete review
 async function deleteReview(reviewId) {
+    if (!reviewId) {
+        console.error('Invalid review ID');
+        return;
+    }
+
     if (!confirm('Are you sure you want to delete this review?')) return;
 
     try {
-        const { error } = await supabase
+        console.log('Starting deletion process for review:', reviewId);
+        
+        // Get the current user's session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            throw new Error('No active session');
+        }
+        
+        console.log('Current user:', session.user.id);
+        
+        // Check if review exists and belongs to current user
+        const { data: review, error: checkError } = await supabase
+            .from('reviews')
+            .select('*')
+            .eq('id', reviewId)
+            .eq('author', session.user.id)
+            .single();
+
+        if (checkError) {
+            console.error('Check error:', checkError);
+            throw new Error('Review not found or permission denied');
+        }
+
+        if (!review) {
+            throw new Error('Review not found');
+        }
+
+        console.log('Found review to delete:', review);
+
+        // Delete related sections first
+        const { data: deletedSections, error: sectionsError } = await supabase
+            .from('sections')
+            .delete()
+            .eq('review_id', reviewId)
+            .select();
+
+        if (sectionsError) {
+            console.error('Error deleting sections:', sectionsError);
+            throw new Error('Failed to delete review sections');
+        }
+
+        console.log('Deleted sections:', deletedSections);
+
+        // Delete the review with explicit author check
+        const { data: deletedReview, error: deleteError } = await supabase
             .from('reviews')
             .delete()
-            .eq('id', reviewId);
+            .eq('id', reviewId)
+            .eq('author', session.user.id)  // Ensure we're only deleting user's own review
+            .select();
 
-        if (error) throw error;
+        if (deleteError) {
+            console.error('Delete error:', deleteError);
+            throw new Error(`Failed to delete review: ${deleteError.message}`);
+        }
 
-        // Reload reviews list
-        const { data: { session } } = await supabase.auth.getSession();
+        if (!deletedReview || deletedReview.length === 0) {
+            throw new Error('Review could not be deleted - no rows affected');
+        }
+
+        console.log('Successfully deleted review:', deletedReview);
+
+        // Reload the reviews list
         await loadUserReviews(session.user.id);
+        
+        // Show success message
+        const successMessage = document.createElement('div');
+        successMessage.textContent = 'Review deleted successfully';
+        successMessage.className = 'success-message';
+        document.body.appendChild(successMessage);
+        setTimeout(() => successMessage.remove(), 3000);
+
+        console.log('Delete process completed successfully');
+
     } catch (error) {
-        console.error('Error deleting review:', error);
-        ui.showError('Error deleting review. Please try again.');
-    }
-}
+        console.error('Error in deleteReview:', error);
+        ui.showError(error.message || 'Error deleting review. Please try again.');
+    }}
 
 async function handleReviewSubmit(event) {
     event.preventDefault();
     
     try {
+        // Get the basic review data
         const reviewId = document.getElementById('reviewId').value;
         const restaurantId = document.getElementById('restaurantId').value;
         const rating = parseFloat(document.getElementById('rating').value);
-        const categoryId = document.getElementById('category').value;
         const summary = security.sanitizeInput(document.getElementById('summary').value.trim());
 
-        console.log('Form data:', {
-            reviewId,
-            restaurantId,
-            rating,
-            categoryId,
-            summary
-        });
-
-        // Get current user session
+        // Check session
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
             throw new Error('No active session found');
         }
 
-        // Create review data object
+        // Create review data with all required fields
         const reviewData = {
             restaurant_id: restaurantId,
             rating,
-            category_id: categoryId,
             summary,
-            author: session.user.id
+            author: session.user.id,
+            publish_date: new Date().toISOString(),
+            tags: [],
+            plusses: [],
+            minuses: [],
+            title: summary.substring(0, 100)
         };
 
-        console.log('Review data being sent:', reviewData);
+        console.log('Saving review with data:', reviewData);
 
         let result;
         if (reviewId) {
-            console.log('Updating existing review:', reviewId);
+            // Update existing review
             result = await supabase
                 .from('reviews')
                 .update(reviewData)
                 .eq('id', reviewId)
-                .select();  // Add .select() to get the updated data
+                .select('id')
+                .single();
         } else {
-            console.log('Creating new review');
+            // Insert new review and return the ID
             result = await supabase
                 .from('reviews')
-                .insert([reviewData])
-                .select();  // Add .select() to get the inserted data
+                .insert(reviewData)
+                .select('id')
+                .single();
         }
 
         console.log('Supabase result:', result);
 
-        if (result.error) throw result.error;
-
-        const savedReviewId = reviewId || result.data?.[0]?.id;
-        if (!savedReviewId) {
-            throw new Error('Failed to get review ID after save');
+        if (result.error) {
+            throw result.error;
         }
 
-        console.log('Processing sections for review:', savedReviewId);
+        if (!result.data) {
+            throw new Error('No data returned from save operation');
+        }
 
+        const savedReviewId = result.data.id;
+        if (!savedReviewId) {
+            throw new Error('No review ID in response data');
+        }
+
+        console.log('Saved review ID:', savedReviewId);
+
+        // Handle sections
+        if (reviewId) {
+            // Delete existing sections if updating
+            const { error: deleteError } = await supabase
+                .from('sections')
+                .delete()
+                .eq('review_id', reviewId);
+            if (deleteError) throw deleteError;
+        }
+
+        // Prepare sections data
         const sections = Array.from(document.querySelectorAll('.editor-section'))
             .map((section, index) => {
                 const type = section.dataset.sectionType;
                 const baseSection = {
                     review_id: savedReviewId,
                     order: index,
-                    heading: '',
-                    text: '',
-                    image_url: ''
+                    heading: null,
+                    text: null,
+                    image_url: null
                 };
                 
                 switch(type) {
@@ -841,13 +928,10 @@ async function handleReviewSubmit(event) {
                             section.querySelector('.editor-section-heading').value.trim()
                         );
                         break;
-                        
                     case 'text':
-                        // Get content directly from Quill editor
                         const quillContent = section.querySelector('.quill-content').value;
-                        baseSection.text = quillContent; // Note: We're not sanitizing this since Quill handles it
+                        baseSection.text = quillContent;
                         break;
-                        
                     case 'image':
                         baseSection.image_url = security.sanitizeInput(
                             section.querySelector('.editor-section-image-url').value.trim()
@@ -858,21 +942,8 @@ async function handleReviewSubmit(event) {
                 return baseSection;
             });
 
-        console.log('Sections to save:', sections);
-
-        // Delete existing sections if updating
-        if (reviewId) {
-            console.log('Deleting old sections');
-            const { error: deleteError } = await supabase
-                .from('sections')
-                .delete()
-                .eq('review_id', reviewId);
-            if (deleteError) throw deleteError;
-        }
-
-        // Insert new sections
+        // Insert new sections if any exist
         if (sections.length > 0) {
-            console.log('Inserting new sections');
             const { error: sectionsError } = await supabase
                 .from('sections')
                 .insert(sections);
@@ -883,7 +954,7 @@ async function handleReviewSubmit(event) {
         await loadUserReviews(session.user.id);
         hideReviewModal();
     } catch (error) {
-        console.error('Detailed error:', error);
+        console.error('Error saving review:', error);
         ui.showError(`Error saving review: ${error.message || 'Unknown error occurred'}`);
     }
 }

@@ -502,7 +502,7 @@ function renderFullReview(reviews, sectionsByReview, initialReviewId) {
                                 <h1 id="rating-number">${review.rating}/10</h1>
                             </div>
                             <div class="cuisine-label-container"> 
-                                <h1 id="cuisine-label">${getCategoryById(category_to_id_map, review.category_id.toString())}</h1>
+                                <h1 id="cuisine-label">${getCategoryById(category_to_id_map, reviews[0].restaurants?.category_id.toString())}</h1>
                             </div>
                             <p class="full-review-summary">${review.summary}</p>
                         </div>
