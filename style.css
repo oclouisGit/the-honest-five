@@ -965,12 +965,18 @@ p.philosophy-question {
     height: auto;
 }
 
+.modal-content.review-form {
+    width: 80vw; /* This sets it to 80% of the viewport width */
+    max-width: 800px;
+    margin: 0 auto;
+}
+
 .review-form {
     background: white;
     padding: 20px;
     border-radius: 8px;
     border: 1px solid #4b3b2f;
-    max-width: 800px;
+    max-width: 750px;
     margin: 0 auto;
 }
 
@@ -1033,11 +1039,7 @@ p.philosophy-question {
 
 
 
-.modal-content.review-form {
-    width: 80vw; /* This sets it to 80% of the viewport width */
-    max-width: 1200px;
-    margin: 0 auto;
-}
+
 
 /* Modal Styles */
 .modal-backdrop {
