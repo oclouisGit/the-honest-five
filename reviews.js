@@ -698,181 +698,146 @@ async function searchReviews(
     user_longitude = null,
     ratingMin = 0,
     ratingMax = 10
-    ) {    
-        if (
-            arraysHaveSameContents(category_ids, previous_category_ids) && 
-            search_entry === previous_search_entry && 
-            user_latitude === previous_user_latitude && 
-            user_longitude === previous_user_longitude && 
-            ratingMax === previous_ratingMax && 
-            ratingMin === previous_ratingMin 
-        ) {
-            previous_category_ids = [...category_ids];
-            previous_search_entry = search_entry;
-            previous_user_latitude = user_latitude;
-            previous_user_longitude = user_longitude;
-            previous_ratingMax = ratingMax;
-            previous_ratingMin = ratingMin;
+) {    
+    try {
+        const container = document.getElementById('review-list-container');
+        if (!container) {
+            throw new Error('Reviews container not found in DOM');
+        }
+
+        container.innerHTML = '<p>Searching reviews...</p>';
+
+        // Start with base query
+        let query = supabase
+            .from('reviews')
+            .select(`
+                *,
+                restaurants (
+                    id,
+                    cover_image,
+                    latitude,
+                    longitude,
+                    name,
+                    category_id
+                )
+            `);
+
+        // Add rating range filter if specified
+        if (ratingMin !== 0 || ratingMax !== 10) {
+            query = query.gte('rating', ratingMin).lte('rating', ratingMax);
+        }
+
+        // If we have a location search, get the restaurant IDs first
+        if (user_latitude !== null && user_longitude !== null) {
+            const { data: nearbyRestaurants, error: locationError } = await supabase.rpc(
+                'nearby_restaurants',
+                {
+                    search_lat: user_latitude,
+                    search_lng: user_longitude,
+                    radius_meters: 5000,
+                    max_results: 20
+                }
+            );
+
+            if (locationError) throw locationError;
+
+            if (nearbyRestaurants && nearbyRestaurants.length > 0) {
+                const restaurantIds = nearbyRestaurants.map(r => r.id);
+                query = query.in('restaurant_id', restaurantIds);
+            } else {
+                container.innerHTML = '<p>No restaurants found in your area.</p>';
+                return;
+            }
+        }
+
+        // Execute the query
+        const { data: reviews, error } = await query;
+        if (error) throw error;
+
+        if (!reviews || reviews.length === 0) {
+            container.innerHTML = '<p>No reviews found.</p>';
             return;
         }
 
-        try {
-            const container = document.getElementById('review-list-container');
-            if (!container) {
-                throw new Error('Reviews container not found in DOM');
+        // Get author display names
+        const { data: profiles, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, display_name')
+            .in('id', reviews.map(review => review.author));
+
+        if (profilesError) throw profilesError;
+        const authorMap = new Map(profiles.map(profile => [profile.id, profile.display_name]));
+
+        // Post-process the results in JavaScript
+        console.log('Category IDs for filtering:', category_ids);
+        console.log('Total reviews before filtering:', reviews.length);
+        let filteredReviews = reviews.filter(review => {
+            // Add author display names
+            review.authorDisplayName = authorMap.get(review.author) || 'Anonymous';
+
+            // Apply category filter if needed
+            if (category_ids.length > 0) {
+                if (!review.restaurants) return false;
+                const restaurantCategoryId = review.restaurants.category_id;
+                // Convert both to strings for comparison
+                const matches = category_ids.some(id => id.toString() === restaurantCategoryId.toString());
+                if (!matches) return false;
             }
 
-            container.innerHTML = '<p>Searching reviews...</p>';
-
-            let reviewIds = null;
-
-            // Step 1: Fetch location-based review IDs using restaurant locations
-            if (user_latitude != null && user_longitude != null) {
-                console.log('Fetching nearby restaurants based on location...');
-                const { data: locationData, error: locationError } = await supabase.rpc(
-                    'nearby_restaurants',
-                    {
-                        search_lat: user_latitude,
-                        search_lng: user_longitude,
-                        radius_meters: 5000,  // Optional: you can adjust this
-                        max_results: 20      // Optional: you can adjust this
-                    }
-                );
-            
-                if (locationError) {
-                    console.error('Error fetching nearby restaurants:', locationError);
-                    throw locationError;
-                }
-            
-                if (locationData && locationData.length > 0) {
-                    // Extract the restaurant IDs from the location-based data
-                    const restaurantIds = locationData.map((restaurant) => restaurant.id);
-                    
-                    // Get reviews for these restaurants
-                    const { data: reviewData, error: reviewError } = await supabase
-                        .from('reviews')
-                        .select('id')
-                        .in('restaurant_id', restaurantIds);
-                        
-                    if (reviewError) throw reviewError;
-                    
-                    reviewIds = reviewData.map(review => review.id);
-                    console.log('Nearby review IDs:', reviewIds);
-                } else {
-                    container.innerHTML = `<p>No reviews found near your location.</p>`;
-                    return;
+            // Apply text search if needed
+            if (searchTerm && searchTerm.trim() !== '') {
+                const term = searchTerm.toLowerCase();
+                const matchesSummary = review.summary && review.summary.toLowerCase().includes(term);
+                const matchesRestaurantName = review.restaurants && 
+                                            review.restaurants.name && 
+                                            review.restaurants.name.toLowerCase().includes(term);
+                if (!matchesSummary && !matchesRestaurantName) {
+                    return false;
                 }
             }
 
-            // Start building the main query
-            let query = supabase
-                .from('reviews')
-                .select(`
-                    *,
-                    restaurants (
-                        id,
-                        cover_image,
-                        latitude,
-                        longitude,
-                        name,
-                        category_id
-                    )
-                `);
+            return true;
+        });
 
-            // Add category filter
-            if (category_ids.length > 0 && category_ids[0] !== '') {
-                query = query.in('category_id', category_ids);
-            }
-
-            // Add search term filter (now including restaurant name)
-            if (searchTerm.trim() !== '') {
-                query = query.or([
-                    { summary: { ilike: `%${searchTerm}%` } },
-                    { 'restaurants.name': { ilike: `%${searchTerm}%` } }
-                ]);
-            }
-            // Add rating range filter
-            if (ratingMin !== 0 || ratingMax !== 10) {
-                query = query.gte('rating', ratingMin).lte('rating', ratingMax);
-            }
-
-            // Filter by review IDs if location-based search was performed
-            if (reviewIds !== null) {
-                query = query.in('id', reviewIds);
-            }
-
-            const { data: reviews, error } = await query;
-
-            if (error) {
-                console.error('Error fetching reviews:', error);
-                throw error;
-            }
-
-            if (!reviews || reviews.length === 0) {
-                container.innerHTML = `<p>No reviews found matching "${searchTerm}".</p>`;
-                return;
-            }
-
-            // Get profiles for all authors
-            const { data: profiles, profilesError } = await supabase
-                .from('profiles')
-                .select('id, display_name')
-                .in('id', reviews.map(review => review.author));
-
-            if (profilesError) throw profilesError;
-
-            // Create a map of author IDs to display names
-            const authorMap = new Map(profiles.map(profile => [profile.id, profile.display_name]));
-
-            // Add display names to reviews
-            const reviewsWithDisplayNames = reviews.map(review => ({
-                ...review,
-                authorDisplayName: authorMap.get(review.author) || 'Anonymous'
-            }));
-
-            // Update filter icon for mobile
-            if (
-                category_ids.length === 0 &&
-                search_entry === '' &&
-                user_latitude === null &&
-                user_longitude === null &&
-                ratingMax === 10 &&
-                ratingMin === 0
-            ) {
-                outlinedFilterButton.classList.remove("hidden");
-                filledFilterButton.classList.add("hidden");
-            } else {
-                outlinedFilterButton.classList.add("hidden");
-                filledFilterButton.classList.remove("hidden");
-            }
-
-            // Update previous values
-            previous_category_ids = [...category_ids];
-            previous_search_entry = search_entry;
-            previous_user_latitude = user_latitude;
-            previous_user_longitude = user_longitude;
-            previous_ratingMax = ratingMax;
-            previous_ratingMin = ratingMin;
-
-            // Display results in correct order for location-based searches
-            if (reviewIds !== null && reviewsWithDisplayNames) {
-                const orderedData = reviewIds
-                    .map(id => reviewsWithDisplayNames.find(review => review.id === id))
-                    .filter(review => review !== undefined);
-                displayReviews(orderedData);
-                return orderedData;
-            } else {
-                displayReviews(reviewsWithDisplayNames);
-                return reviewsWithDisplayNames;
-            }
-
-        } catch (error) {
-            console.error('Error in searchReviews:', error);
-            const container = document.getElementById('review-list-container');
-            if (container) {
-                container.innerHTML = `<p>Error searching reviews: ${error.message}</p>`;
-            }
+        // Update filter icon for mobile
+        if (
+            category_ids.length === 0 &&
+            searchTerm === '' &&
+            user_latitude === null &&
+            user_longitude === null &&
+            ratingMax === 10 &&
+            ratingMin === 0
+        ) {
+            outlinedFilterButton.classList.remove("hidden");
+            filledFilterButton.classList.add("hidden");
+        } else {
+            outlinedFilterButton.classList.add("hidden");
+            filledFilterButton.classList.remove("hidden");
         }
+
+        // Update previous values
+        previous_category_ids = [...category_ids];
+        previous_search_entry = searchTerm;
+        previous_user_latitude = user_latitude;
+        previous_user_longitude = user_longitude;
+        previous_ratingMax = ratingMax;
+        previous_ratingMin = ratingMin;
+
+        if (filteredReviews.length === 0) {
+            container.innerHTML = '<p>No reviews found matching your criteria.</p>';
+            return;
+        }
+
+        displayReviews(filteredReviews);
+        return filteredReviews;
+
+    } catch (error) {
+        console.error('Error in searchReviews:', error);
+        const container = document.getElementById('review-list-container');
+        if (container) {
+            container.innerHTML = `<p>Error searching reviews: ${error.message}</p>`;
+        }
+    }
 }
 
 
