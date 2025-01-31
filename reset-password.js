@@ -61,21 +61,37 @@ const ui = {
             errorElement.textContent = '';
             errorElement.style.display = 'none';
         }
+    },
+
+    // New method to safely update email input
+    updateEmailInput(email) {
+        const emailInput = document.getElementById('email');
+        if (emailInput && email) {
+            emailInput.value = email;
+        } else {
+            console.warn('Email input not found or email is empty');
+        }
     }
 };
 
 // Main initialization
 document.addEventListener('DOMContentLoaded', async () => {
+    // Get form elements
     const form = document.getElementById('inviteForm');
-    const emailInput = document.getElementById('email');
     const submitButton = document.getElementById('submitButton');
+
+    if (!form || !submitButton) {
+        console.error('Required form elements not found');
+        ui.showError('Error loading form elements. Please refresh the page.');
+        return;
+    }
 
     try {
         // Set up auth state change listener
         supabase.auth.onAuthStateChange(async (event, session) => {
             console.log('Auth state changed:', event, session);
             if (session?.user?.email) {
-                emailInput.value = session.user.email;
+                ui.updateEmailInput(session.user.email);
             }
         });
 
@@ -101,7 +117,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Set email in form
-        emailInput.value = session.user.email;
+        ui.updateEmailInput(session.user.email);
 
         // Handle form submission
         form.addEventListener('submit', async (e) => {
@@ -110,7 +126,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             ui.clearError();
 
             try {
-                const password = document.getElementById('password').value;
+                const passwordInput = document.getElementById('password');
+                if (!passwordInput) {
+                    throw new Error('Password input not found');
+                }
+
+                const password = passwordInput.value;
 
                 // Validate password
                 security.validatePassword(password);
