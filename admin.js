@@ -113,9 +113,26 @@ const ui = {
     },
 
     clearForm() {
-        document.getElementById('email').value = '';
-        document.getElementById('password').value = '';
-        document.getElementById('error').textContent = '';
+        // Clear form inputs
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const errorElement = document.getElementById('error');
+        const userEmailElement = document.getElementById('userEmail');
+        
+        if (emailInput) emailInput.value = '';
+        if (passwordInput) passwordInput.value = '';
+        if (errorElement) {
+            errorElement.textContent = '';
+            errorElement.style.display = 'none';
+        }
+        if (userEmailElement) userEmailElement.textContent = '';
+        
+        // Clear any modals that might be open
+        const reviewModal = document.getElementById('reviewModal');
+        const restaurantModal = document.getElementById('restaurantModal');
+        
+        if (reviewModal) reviewModal.style.display = 'none';
+        if (restaurantModal) restaurantModal.style.display = 'none';
     }
 };
 
@@ -172,12 +189,35 @@ async function signIn() {
 
 async function signOut() {
     try {
-        const { error } = await supabase.auth.signOut()
-        if (error) throw error
-        ui.showAuthContainer()
+        // Clear all displayed data first
+        const reviewList = document.getElementById('reviewList');
+        if (reviewList) {
+            reviewList.innerHTML = '';
+        }
+        
+        // Clear any cached data
+        category_to_id_map = {};
+        isLoadingData = false;
+        
+        // Clear any error messages
+        const errorElement = document.getElementById('error');
+        if (errorElement) {
+            errorElement.textContent = '';
+            errorElement.style.display = 'none';
+        }
+
+        // Sign out from Supabase
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+
+        // Reset UI
+        ui.showAuthContainer();
+        ui.clearForm();
+        
+        console.log('Successfully signed out and cleared all data');
     } catch (error) {
-        console.error('Error signing out:', error.message)
-        ui.showError('Error signing out. Please try again.')
+        console.error('Error signing out:', error.message);
+        ui.showError('Error signing out. Please try again.');
     }
 }
 
@@ -210,6 +250,17 @@ supabase.auth.onAuthStateChange((event, session) => {
             });
         }
     } else {
+        // Clear reviews when signed out
+        if (event === 'SIGNED_OUT') {
+            console.log('Clearing reviews and cached data');
+            const reviewList = document.getElementById('reviewList');
+            if (reviewList) {
+                reviewList.innerHTML = '';
+            }
+            // Clear cached category data
+            category_to_id_map = {};
+            isLoadingData = false;
+        }
         ui.showAuthContainer();
     }
 });
