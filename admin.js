@@ -85,42 +85,7 @@ const security = {
         this.attempts.delete(email)
     }
 }
-async function checkCanInvite(supabaseClient) {
-    const { data, error } = await supabaseClient
-        .from('authorized_inviters')
-        .select('can_invite')
-        .single();
-    
-    if (error) throw error;
-    return data?.can_invite || false;
-}
 
-async function logInvite(supabaseClient, invitedEmail) {
-    const { error } = await supabaseClient
-        .from('invite_logs')
-        .insert([{ 
-            invited_email: invitedEmail
-        }]);
-    
-    if (error) throw error;
-}
-
-async function sendInvite(email) {
-    try {
-        const { data, error } = await supabase
-            .rpc('send_invite', { 
-                email_to_invite: email 
-            });
-            
-        if (error) throw error;
-        if (data.error) throw new Error(data.error);
-        
-        return data;
-    } catch (error) {
-        console.error('Error sending invite:', error);
-        throw error;
-    }
-}
 
 async function checkAuth() {
     const { data: { session }, error } = await supabase.auth.getSession();
@@ -151,16 +116,6 @@ const ui = {
         document.getElementById('email').value = '';
         document.getElementById('password').value = '';
         document.getElementById('error').textContent = '';
-    },    
-    showInviteStatus(message, isError = false) {
-        const statusElement = document.getElementById('inviteStatus');
-        if (statusElement) {
-            statusElement.textContent = message;
-            statusElement.className = isError ? 'error-message' : 'success-message';
-            setTimeout(() => {
-                statusElement.textContent = '';
-            }, 5000);
-        }
     }
 };
 
@@ -1420,7 +1375,6 @@ function initializeSortable() {
 
 // Make functions globally available
 window.signIn = signIn;
-window.sendInvite = sendInvite;
 window.signOut = signOut;
 window.editReview = editReview;
 window.deleteReview = deleteReview;
@@ -1441,17 +1395,3 @@ document.addEventListener('DOMContentLoaded', () => {
     setupAddressAutocomplete();
 });
 
-const testNewFunction = async (email) => {
-    try {
-        const { data, error } = await supabase
-            .rpc('send_invite', {
-                email_to_invite: email
-            });
-        console.log('New function test:', { data, error });
-    } catch (err) {
-        console.error('New function error:', err);
-    }
-};
-
-// Test it
-testNewFunction('test@example.com');

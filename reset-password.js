@@ -63,13 +63,31 @@ const ui = {
         }
     },
 
-    // New method to safely update email input
     updateEmailInput(email) {
         const emailInput = document.getElementById('email');
         if (emailInput && email) {
             emailInput.value = email;
         } else {
             console.warn('Email input not found or email is empty');
+        }
+    },
+
+    setupFormForType(type) {
+        const formTitle = document.getElementById('formTitle');
+        const displayNameGroup = document.getElementById('displayNameGroup');
+        const submitButton = document.getElementById('submitButton');
+        const displayNameInput = document.getElementById('displayName');
+
+        if (type === 'invite') {
+            formTitle.textContent = 'Complete Your Profile';
+            displayNameGroup.style.display = 'block';
+            displayNameInput.required = true;
+            submitButton.textContent = 'Complete Registration';
+        } else if (type === 'recovery') {
+            formTitle.textContent = 'Reset Your Password';
+            displayNameGroup.style.display = 'none';
+            displayNameInput.required = false;
+            submitButton.textContent = 'Reset Password';
         }
     }
 };
@@ -100,9 +118,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const accessToken = hashParams.get('access_token');
         const tokenType = hashParams.get('type');
 
-        if (!accessToken || tokenType !== 'invite') {
-            throw new Error('Invalid invite link. Please request a new invitation.');
+        if (!accessToken || !['invite', 'recovery'].includes(tokenType)) {
+            throw new Error('Invalid link. Please request a new link.');
         }
+
+        // Set up the form based on the link type
+        ui.setupFormForType(tokenType);
 
         // Set the session with the access token
         const { data: { session }, error: sessionError } = await supabase.auth.setSession({
@@ -113,7 +134,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (sessionError) throw sessionError;
 
         if (!session?.user?.email) {
-            throw new Error('No valid session found. Please use the invite link from your email.');
+            throw new Error('No valid session found. Please use the link from your email.');
         }
 
         // Set email in form
@@ -127,8 +148,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             try {
                 const passwordInput = document.getElementById('password');
+                const displayNameInput = document.getElementById('displayName');
+                
                 if (!passwordInput) {
-                    throw new Error('Password input not found');
+                    throw new Error('Form inputs not found');
                 }
 
                 const password = passwordInput.value;
@@ -143,15 +166,36 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 if (updateError) throw updateError;
 
+                // If this is an invite link, also update the profile
+                if (tokenType === 'invite') {
+                    const displayName = displayNameInput.value.trim();
+                    if (!displayName) {
+                        throw new Error('Display name is required');
+                    }
+
+                    const { error: profileError } = await supabase
+                        .from('profiles')
+                        .upsert({
+                            id: session.user.id,
+                            display_name: displayName
+                        });
+
+                    if (profileError) throw profileError;
+                }
+
                 // Show success and redirect
-                ui.showError('Password set successfully! Redirecting...', true);
+                const successMessage = tokenType === 'invite' 
+                    ? 'Profile created successfully! Redirecting...'
+                    : 'Password reset successfully! Redirecting...';
+                
+                ui.showError(successMessage, true);
                 
                 setTimeout(() => {
                     window.location.href = '/';
                 }, 2000);
 
             } catch (error) {
-                console.error('Password update error:', error);
+                console.error('Update error:', error);
                 ui.showError(error.message);
                 submitButton.disabled = false;
             }
@@ -159,7 +203,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     } catch (error) {
         console.error('Setup error:', error);
-        ui.showError(error.message || 'Invalid or expired invite link. Please request a new invitation.');
+        ui.showError(error.message || 'Invalid or expired link. Please request a new link.');
         if (form) form.style.display = 'none';
     }
 });

@@ -21,10 +21,16 @@
         <p>&copy; 2024 The Honest 5</p>
     </footer>
     <script>
-        // Check if this is an invite link
-        if (window.location.hash && window.location.hash.includes('type=invite')) {
-            // Preserve the entire hash with all parameters
-            window.location.href = '/reset-password.html' + window.location.hash;
+        // Check if this is an invite or recovery link
+        if (window.location.hash) {
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            const linkType = hashParams.get('type');
+            
+            // Redirect if it's either an invite or recovery link
+            if (linkType === 'invite' || linkType === 'recovery') {
+                // Preserve the entire hash with all parameters
+                window.location.href = '/reset-password.html' + window.location.hash;
+            }
         }
     </script>
 </body>
