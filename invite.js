@@ -41,38 +41,28 @@ const security = {
             throw new Error(errors.join('. '))
         }
         return true
-    },
-
-    sanitizeInput(input) {
-        if (typeof input !== 'string') return ''
-        return input.replace(/[&<>"']/g, function(m) {
-            const map = {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#39;'
-            }
-            return map[m]
-        })
     }
-}
+};
 
 // UI utilities
 const ui = {
     showError(message, isSuccess = false) {
         const errorElement = document.getElementById('error');
-        errorElement.textContent = message;
-        errorElement.className = isSuccess ? 'success-message' : 'error';
-        errorElement.style.display = 'block';
+        if (errorElement) {
+            errorElement.textContent = message;
+            errorElement.className = isSuccess ? 'success-message' : 'error';
+            errorElement.style.display = 'block';
+        }
     },
 
     clearError() {
         const errorElement = document.getElementById('error');
-        errorElement.textContent = '';
-        errorElement.style.display = 'none';
+        if (errorElement) {
+            errorElement.textContent = '';
+            errorElement.style.display = 'none';
+        }
     }
-}
+};
 
 // Main initialization
 document.addEventListener('DOMContentLoaded', async () => {
@@ -81,27 +71,37 @@ document.addEventListener('DOMContentLoaded', async () => {
     const submitButton = document.getElementById('submitButton');
 
     try {
-        // Get token from URL parameters
-        const params = new URLSearchParams(window.location.search);
-        const token = params.get('token');
-        const type = params.get('type');
-
-        if (!token || type !== 'invite') {
-            throw new Error('Invalid or expired invite link');
-        }
-
-        // Verify the token by trying to exchange it
-        const { data: { user }, error: verifyError } = await supabase.auth.verifyOtp({
-            token_hash: token,
-            type: 'invite'
+        // Set up auth state change listener
+        supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('Auth state changed:', event, session);
+            if (session?.user?.email) {
+                emailInput.value = session.user.email;
+            }
         });
 
-        if (verifyError) throw verifyError;
+        // Get hash parameters from URL
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const tokenType = hashParams.get('type');
 
-        // If we have a user, show their email
-        if (user?.email) {
-            emailInput.value = user.email;
+        if (!accessToken || tokenType !== 'invite') {
+            throw new Error('Invalid invite link. Please request a new invitation.');
         }
+
+        // Set the session with the access token
+        const { data: { session }, error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: hashParams.get('refresh_token')
+        });
+
+        if (sessionError) throw sessionError;
+
+        if (!session?.user?.email) {
+            throw new Error('No valid session found. Please use the invite link from your email.');
+        }
+
+        // Set email in form
+        emailInput.value = session.user.email;
 
         // Handle form submission
         form.addEventListener('submit', async (e) => {
@@ -130,6 +130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }, 2000);
 
             } catch (error) {
+                console.error('Password update error:', error);
                 ui.showError(error.message);
                 submitButton.disabled = false;
             }
@@ -137,7 +138,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     } catch (error) {
         console.error('Setup error:', error);
-        ui.showError('Invalid or expired invite link. Please request a new invitation.');
-        form.style.display = 'none';
+        ui.showError(error.message || 'Invalid or expired invite link. Please request a new invitation.');
+        if (form) form.style.display = 'none';
     }
 });
