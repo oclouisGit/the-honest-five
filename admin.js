@@ -159,6 +159,7 @@ async function signIn() {
         }
 
         // Success
+        // Success
         ui.clearForm()
         security.clearAttempts(email)
 
@@ -168,35 +169,6 @@ async function signIn() {
 }
 
 
-
-async function signUp() {
-    try {
-        const email = security.sanitizeInput(document.getElementById('email').value.trim())
-        const password = document.getElementById('password').value
-
-        // Input validation
-        if (!email || !password) {
-            throw new Error('Please fill in all fields')
-        }
-
-        // Validate password strength
-        security.validatePassword(password)
-
-        const { data, error } = await supabase.auth.signUp({
-            email,
-            password
-        })
-
-        if (error) throw error
-
-        // Success
-        ui.clearForm()
-        ui.showError('Check your email for the confirmation link!')
-
-    } catch (error) {
-        ui.showError(error.message)
-    }
-}
 
 async function signOut() {
     try {
@@ -209,17 +181,38 @@ async function signOut() {
     }
 }
 
+// Track loading state
+let isLoadingData = false;
+
 // Session refresh and monitoring
 supabase.auth.onAuthStateChange((event, session) => {
+    console.log('Auth state changed:', event);
     if (event === 'TOKEN_REFRESHED') {
-        console.log('Session token refreshed')
+        console.log('Session token refreshed');
     }
     if (session) {
-        ui.showUserContainer(session.user)
+        ui.showUserContainer(session.user);
+        // Load reviews immediately after successful sign in
+        if (event === 'SIGNED_IN' && !isLoadingData) {
+            isLoadingData = true;
+            console.log('Loading reviews after sign in');
+            
+            // Use Promise.all to load data in parallel
+            Promise.all([
+                loadUserReviews(session.user.id)
+            ])
+            .catch(error => {
+                console.error('Error loading data after sign in:', error);
+                ui.showError('Error loading data. Please refresh the page.');
+            })
+            .finally(() => {
+                isLoadingData = false;
+            });
+        }
     } else {
-        ui.showAuthContainer()
+        ui.showAuthContainer();
     }
-})
+});
 
 // Initialization
 checkUser()
