@@ -353,12 +353,7 @@ async function loadFullReview(reviewSlug, reviewAuthorDisplayName = null) {
             .select(`
                 *,
                 restaurants!reviews_restaurant_id_fkey (
-                    id,
-                    cover_image,
-                    latitude,
-                    longitude,
-                    name,
-                    category_id
+                    *
                 )
             `)
             .eq('restaurant_id', initialReview.restaurant_id);
@@ -436,13 +431,24 @@ function renderFullReview(reviews, sectionsByReview, initialReviewId) {
     const relatedReviews = reviews.filter(review => review.restaurant_id === restaurantId);
     const hasMultipleReviews = relatedReviews.length > 1;
     const gauges = {};
-    
+    // let reviewHTML = `
+    // <h1 class="article-title">${reviews[0].restaurants?.name || reviews[0].title}</h1>
+    // <h3 class="article-address">${reviews[0].restaurants?.address || ''}</h3>
+
+    // <div class="full-review-cover-image"> 
+    //     <img src="${reviews[0].restaurants?.cover_image || 'No image available'}" alt="${reviews[0].restaurants?.name || reviews[0].title}">
+    // </div>
+
+    // <div id="review-map" class="review-map" ></div>
+
+    // `;
     let reviewHTML = `
         <h1 class="article-title">${reviews[0].restaurants?.name || reviews[0].title}</h1>
+        <h3 class="article-address">${reviews[0].restaurants?.address || ''}</h3>
 
-        <div class="full-review-cover-image"> 
-            <img src="${reviews[0].restaurants?.cover_image || 'No image available'}" alt="${reviews[0].restaurants?.name || reviews[0].title}">
-        </div>`;
+        <div id="review-map" class="review-map" ></div>
+
+        `;
 
         if (hasMultipleReviews) {
             reviewHTML += `
@@ -518,8 +524,8 @@ function renderFullReview(reviews, sectionsByReview, initialReviewId) {
                     </div>`;
             });
         }
-
-    reviewHTML += '</div>'; // Close reviewContents div
+    reviewHTML += '</div>'; 
+    // reviewHTML += '<div class="review-sections"><h1 class="section-heading">Map</h1><div id="review-map" class="review-map" ></div></div></div>'; 
     
     fullReviewContainer.innerHTML = reviewHTML;
 
@@ -594,7 +600,27 @@ function renderFullReview(reviews, sectionsByReview, initialReviewId) {
         }
     }
 
+    var map = L.map('review-map').setView([reviews[0].restaurants.latitude,reviews[0].restaurants.longitude], 14);
+
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
     fullReviewContainer.classList.remove('hidden');
+
+    if (!reviews[0].restaurants.latitude || !reviews[0].restaurants.longitude) return;
+    
+    const marker = L.marker([reviews[0].restaurants.latitude, reviews[0].restaurants.longitude]).bindPopup(`
+        <div class="restaurant-popup">
+            <div style="display: flex; align-items: stretch; gap: 16px;">
+                <div style="flex: 1;">
+                    <h3>${reviews[0].restaurants.name}</h3>
+
+                </div>
+            </div>
+        </div>
+    `).addTo(map);
 }
 
 // Helper function to render sections

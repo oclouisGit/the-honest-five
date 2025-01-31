@@ -85,50 +85,46 @@ const security = {
         this.attempts.delete(email)
     }
 }
-async function sendInvite() {
+async function checkCanInvite(supabaseClient) {
+    const { data, error } = await supabaseClient
+        .from('authorized_inviters')
+        .select('can_invite')
+        .single();
+    
+    if (error) throw error;
+    return data?.can_invite || false;
+}
+
+async function logInvite(supabaseClient, invitedEmail) {
+    const { error } = await supabaseClient
+        .from('invite_logs')
+        .insert([{ 
+            invited_email: invitedEmail
+        }]);
+    
+    if (error) throw error;
+}
+
+async function sendInvite(email) {
     try {
-        const email = document.getElementById('inviteEmail').value.trim();
-        
-        if (!email) {
-            throw new Error('Please enter an email address');
-        }
-
-        // Check if user is allowed to send invites
-        const { data: inviter, error: inviterError } = await supabase
-            .from('authorized_inviters')
-            .select('can_invite')
-            .eq('id', (await supabase.auth.getUser()).data.user.id)
-            .single();
-
-        if (inviterError || !inviter || !inviter.can_invite) {
-            throw new Error('Not authorized to send invites');
-        }
-
-        // Send the invite
-        const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
-            redirectTo: `${window.location.origin}/invite`
-        });
-
+        const { data, error } = await supabase
+            .rpc('send_invite', { 
+                email_to_invite: email 
+            });
+            
         if (error) throw error;
-
-        // Log the invite
-        const { error: logError } = await supabase
-            .from('invite_logs')
-            .insert([{
-                invited_email: email,
-                invited_by: (await supabase.auth.getUser()).data.user.id
-            }]);
-
-        if (logError) throw logError;
-
-        // Clear input and show success message
-        document.getElementById('inviteEmail').value = '';
-        ui.showInviteStatus('Invite sent successfully!');
-
+        if (data.error) throw new Error(data.error);
+        
+        return data;
     } catch (error) {
         console.error('Error sending invite:', error);
-        ui.showInviteStatus(error.message, true);
+        throw error;
     }
+}
+
+async function checkAuth() {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    console.log('Auth status:', { session, error });
 }
 
 const ui = {
@@ -1151,10 +1147,11 @@ async function handleRestaurantSubmit(event) {
         const categoryId = document.getElementById('restaurantCategory').value;
         const latitude = document.getElementById('latitude').value;
         const longitude = document.getElementById('longitude').value;
+        const displayAddress = security.sanitizeInput(document.getElementById('address').value.trim());
         const imageInput = document.getElementById('restaurantImage');
         
         // Validate required fields
-        if (!name || !categoryId) {
+        if (!name || !categoryId || !displayAddress) {
             throw new Error('Please fill in all required fields');
         }
         
@@ -1170,6 +1167,7 @@ async function handleRestaurantSubmit(event) {
             category_id: categoryId,
             latitude: latitude || null,
             longitude: longitude || null,
+            address: displayAddress, // Add the display address
             cover_image: imageUrl
         };
         
@@ -1188,6 +1186,76 @@ async function handleRestaurantSubmit(event) {
         console.error('Error saving restaurant:', error);
         ui.showError(`Error saving restaurant: ${error.message}`);
     }
+}
+
+function displayAddressResults(results) {
+    const dropdown = document.getElementById('addressDropdown');
+    
+    if (!results.length) {
+        dropdown.classList.add('hidden');
+        return;
+    }
+    
+    dropdown.innerHTML = results
+        .slice(0, 5) // Limit to 5 results
+        .map(result => {
+            const displayName = security.sanitizeInput(result.display_name);
+            // Try to extract a reasonable street address format
+            const addressParts = displayName.split(',');
+            let streetAddress = '';
+            
+            // Look for parts that contain street numbers
+            for (const part of addressParts) {
+                const trimmedPart = part.trim();
+                if (/\d+\s+[A-Za-z\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|Circle|Cir|Place|Pl|Way|Square|Sq)\b/i.test(trimmedPart)) {
+                    streetAddress = trimmedPart;
+                    break;
+                }
+            }
+            
+            // If no street address found, use first part
+            if (!streetAddress) {
+                streetAddress = addressParts[0].trim();
+            }
+            
+            return `
+                <div class="address-option" 
+                     data-lat="${result.lat}" 
+                     data-lon="${result.lon}"
+                     data-name="${streetAddress}"
+                     data-full-name="${displayName}">
+                    <div class="suggested-address">${streetAddress}</div>
+                    <div class="full-address text-sm text-gray-500">${displayName}</div>
+                </div>
+            `;
+        })
+        .join('');
+    
+    dropdown.classList.remove('hidden');
+    
+    // Add click handlers to options
+    dropdown.querySelectorAll('.address-option').forEach(option => {
+        option.addEventListener('click', () => {
+            const lat = option.dataset.lat;
+            const lon = option.dataset.lon;
+            const name = option.dataset.name;
+            
+            // Update form fields
+            document.getElementById('address').value = name;
+            document.getElementById('latitude').value = lat;
+            document.getElementById('longitude').value = lon;
+            
+            // Add edit message
+            const addressHelp = document.getElementById('addressHelp');
+            if (addressHelp) {
+                addressHelp.textContent = 'You can edit the address format if needed';
+                addressHelp.classList.remove('hidden');
+            }
+            
+            // Hide dropdown
+            dropdown.classList.add('hidden');
+        });
+    });
 }
 
 // Set up event listeners
@@ -1218,6 +1286,14 @@ let addressTimeout = null;
 function setupAddressAutocomplete() {
     const addressInput = document.getElementById('address');
     const dropdown = document.getElementById('addressDropdown');
+    
+    // Add help text element if it doesn't exist
+    if (!document.getElementById('addressHelp')) {
+        const helpText = document.createElement('div');
+        helpText.id = 'addressHelp';
+        helpText.className = 'text-sm text-gray-500 mt-1 hidden';
+        addressInput.parentNode.insertBefore(helpText, addressInput.nextSibling);
+    }
 
     addressInput.addEventListener('input', (e) => {
         const query = e.target.value.trim();
@@ -1265,49 +1341,6 @@ function setupAddressAutocomplete() {
     });
 }
 
-// Display address search results
-function displayAddressResults(results) {
-    const dropdown = document.getElementById('addressDropdown');
-    
-    if (!results.length) {
-        dropdown.classList.add('hidden');
-        return;
-    }
-    
-    dropdown.innerHTML = results
-        .slice(0, 5) // Limit to 5 results
-        .map(result => {
-            const displayName = security.sanitizeInput(result.display_name);
-            return `
-                <div class="address-option" 
-                     data-lat="${result.lat}" 
-                     data-lon="${result.lon}"
-                     data-name="${displayName}">
-                    ${displayName}
-                </div>
-            `;
-        })
-        .join('');
-    
-    dropdown.classList.remove('hidden');
-    
-    // Add click handlers to options
-    dropdown.querySelectorAll('.address-option').forEach(option => {
-        option.addEventListener('click', () => {
-            const lat = option.dataset.lat;
-            const lon = option.dataset.lon;
-            const name = option.dataset.name;
-            
-            // Update form fields
-            document.getElementById('address').value = name;
-            document.getElementById('latitude').value = lat;
-            document.getElementById('longitude').value = lon;
-            
-            // Hide dropdown
-            dropdown.classList.add('hidden');
-        });
-    });
-}
 
 document.querySelectorAll('.editor-section-content').forEach((textarea) => {
     textarea.style.height = 'auto'; // Reset height to auto
@@ -1407,3 +1440,18 @@ document.addEventListener('DOMContentLoaded', setupRestaurantEventListeners);
 document.addEventListener('DOMContentLoaded', () => {
     setupAddressAutocomplete();
 });
+
+const testNewFunction = async (email) => {
+    try {
+        const { data, error } = await supabase
+            .rpc('send_invite', {
+                email_to_invite: email
+            });
+        console.log('New function test:', { data, error });
+    } catch (err) {
+        console.error('New function error:', err);
+    }
+};
+
+// Test it
+testNewFunction('test@example.com');

@@ -22,7 +22,8 @@ body {
 }
 
 h1 {
-    font-size: 22px;
+    font-size: 22;
+
 }
 
 /* ====== Layout Components ====== */
@@ -459,11 +460,22 @@ canvas{
 
 .article-title {
     text-align: center;
-    font-size: clamp(3rem, 5vw, 5rem);
-    margin: 0 0 20px 0;
-    font-weight: 1000;
+    margin: 0 0 0px 0;
     height: auto;
     overflow: hidden;
+    font-size: clamp(3rem, 5vw, 5rem);
+    font-weight: 1000;
+    height: auto;
+}
+
+.article-address {
+    text-align: center;
+    margin: 10px 0 15px 0;
+    height: auto;
+    overflow: hidden;
+    font-size: 20;
+    font-weight: 500;
+    height: auto;
 }
 
 .full-review-cover-image {
@@ -752,6 +764,13 @@ p.philosophy-question {
 #map {
     height: 100%;
     width: 100%;
+}
+
+.review-map {
+    height: 400px;
+    width: 100%;
+    max-width: 585px;
+    margin: 20px auto;
 }
 
 /* ====== /\MAP/\ ====== */
