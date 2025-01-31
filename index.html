@@ -20,6 +20,12 @@
     <footer>
         <p>&copy; 2024 The Honest 5</p>
     </footer>
-
+    <script>
+        // Check if this is an invite link
+        if (window.location.hash && window.location.hash.includes('type=invite')) {
+            // Preserve the entire hash with all parameters
+            window.location.href = '/reset-password.html' + window.location.hash;
+        }
+    </script>
 </body>
 </html>
