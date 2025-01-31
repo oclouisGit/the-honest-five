@@ -293,6 +293,18 @@ async function initializeAdmin() {
 
 async function loadUserReviews(userId) {
     try {
+        // First get the user's profile to get their display name
+        const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('id', userId)
+            .single();
+
+        if (profileError) {
+            console.error('Error fetching profile:', profileError);
+        }
+
+        // Then get the reviews with restaurant data
         const { data: reviews, error } = await supabase
             .from('reviews')
             .select(`
@@ -309,9 +321,19 @@ async function loadUserReviews(userId) {
             .eq('author', userId);
 
         if (error) throw error;
+
+        // Add the display name to each review
+        const reviewsWithDisplayName = reviews.map(review => ({
+            ...review,
+            profiles: {
+                display_name: profileData?.display_name
+            }
+        }));
+
+        if (error) throw error;
         
         const categoryMap = await fetchCategories();
-        displayReviews(reviews, categoryMap);
+        displayReviews(reviewsWithDisplayName, categoryMap);
         
     } catch (error) {
         console.error('Error loading reviews:', error);
@@ -372,6 +394,7 @@ function displayReviews(reviews) {
 
             const restaurant = review.restaurants;
             const categoryName = getCategoryById(category_to_id_map, restaurant?.category_id);
+            const displayName = review.profiles?.display_name || 'Anonymous';
             
             // Use review.cover_image if available, otherwise fallback to restaurant.cover_image
             const coverImage = review?.cover_image || restaurant.cover_image || 'No image available';
@@ -384,7 +407,7 @@ function displayReviews(reviews) {
                     <div class="non-image-review-container"> 
                         <div class="review-text-container"> 
                             <h1>${restaurant?.name || 'Untitled'}</h1>
-                            <p><strong>Reviewer:</strong> ${review.author_display_name || 'Anonymous'}</p>
+                            <p><strong>Reviewer:</strong> ${displayName}</p>
                             <p>${review.summary || 'No summary available'}</p>
                         </div>
 
@@ -468,40 +491,48 @@ function showReviewModal(reviewData = null) {
         document.getElementById('restaurantId').value = reviewData.restaurant_id;
         document.getElementById('rating').value = reviewData.rating;
         document.getElementById('summary').value = reviewData.summary;
-        const sectionDiv = document.getElementById('cover_image_section');
-        const contentDiv = document.getElementById('cover_image_content');
-        contentDiv.innerHTML = `
-                <div class="editor-section-image">
-                    <div class="preview-area">
-                        ${reviewData?.cover_image ? 
-                        `<img src="${security.sanitizeInput(reviewData.cover_image)}" 
-                                class="editor-section-image-preview" 
-                                alt="Preview">` 
-                        : '<div class="placeholder">No image selected</div>'}
-                    </div>
-                    <div class="controls-area">
-                        <input type="file" 
-                            class="editor-section-image-file" 
-                            accept="image/*"
-                            onchange="handleImageUpload(this, '.editor-cover-image-url')">
-                        <input type="hidden" 
-                            class="editor-cover-image-url" 
-                            value="${security.sanitizeInput(reviewData?.cover_image || '')}">
-                        <div class="upload-status hidden"></div>
-                    </div>
-                </div>
-            `;
-        sectionDiv.appendChild(contentDiv);
-        loadReviewSections(reviewData.id);
     } else {
         document.getElementById('modalReviewForm').reset();
         document.getElementById('reviewId').value = '';
         document.getElementById('sectionsList').innerHTML = '';
     }
     
+    // Always create the cover image section, whether editing or creating new
+    const sectionDiv = document.getElementById('cover_image_section');
+    const contentDiv = document.createElement('div');
+    contentDiv.id = 'cover_image_content';
+    contentDiv.innerHTML = `
+        <div class="editor-section-image">
+            <div class="preview-area">
+                ${reviewData?.cover_image ? 
+                `<img src="${security.sanitizeInput(reviewData.cover_image)}" 
+                        class="editor-section-image-preview" 
+                        alt="Preview">` 
+                : '<div class="placeholder">No image selected</div>'}
+            </div>
+            <div class="controls-area">
+                <input type="file" 
+                    class="editor-section-image-file" 
+                    accept="image/*"
+                    onchange="handleImageUpload(this, '.editor-cover-image-url')">
+                <input type="hidden" 
+                    class="editor-cover-image-url" 
+                    value="${security.sanitizeInput(reviewData?.cover_image || '')}">
+                <div class="upload-status hidden"></div>
+            </div>
+        </div>
+    `;
+    
+    // Clear existing content and append new
+    sectionDiv.innerHTML = '';
+    sectionDiv.appendChild(contentDiv);
+    
+    if (reviewData) {
+        loadReviewSections(reviewData.id);
+    }
+    
     reviewModal.style.display = 'flex';
     setupFormListener(); 
-
     initializeSortable();
 }
 
