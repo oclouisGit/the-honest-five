@@ -1094,3 +1094,5 @@ filledFilterButton.addEventListener("click", () => {
         filterHeader.style.display = "none";  // Hide the filter header
     }
 });
+
+
