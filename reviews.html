@@ -3,25 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reviews - TH5</title>
+    <title>Reviews — The Honest Five</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""/>
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin=""/>
 </head>
 <body>
 
 <header>
     <div class="nav-container">
+        <a class="nav-wordmark" href="/index.html">The Honest Five</a>
         <nav class="main-nav">
             <ul>
-                <li><a href="/map.html">MAP</a></li>
-                <li><a href="/reviews.html">REVIEWS</a></li>
-                <li><a href="/philosophy.html">PHILOSOPHY</a></li>
+                <li><a href="/reviews.html" class="active">Reviews</a></li>
+                <li><a href="/philosophy.html">Philosophy</a></li>
+                <li><a href="/map.html">Map</a></li>
             </ul>
         </nav>
         <div class="mobile-nav">
-            <a href="index.html">HOME</a>
             <div class="filter-button-container">
                 <button class="icon-button hidden" id="filled-icon-button">
                     <img src="icons/icons8-filter-ios-17-filled-32.png" alt="Filter Icon">
@@ -29,9 +32,7 @@
                 <button class="icon-button" id="outlined-icon-button">
                     <img src="icons/icons8-filter-ios-17-outlined-32.png" alt="Filter Icon">
                 </button>
-                
             </div>
-           
         </div>
     </div>
 </header>
@@ -39,55 +40,45 @@
 <main>
     <div class="content-wrapper">
         <div class="filter-header">
-            <button class="filter-button" id="search-toggle-button">Search</button>
-            <div class="search-container hidden">
-                <input type="text" id="search-bar" class="search-bar" placeholder="Type to search...">
-                <button id="clear-search" class="clear-button"><</button>
+            <div class="search-container">
+                <input type="text" id="search-bar" class="search-bar" placeholder="Search restaurants…">
+                <button id="clear-search" class="clear-button hidden">×</button>
             </div>
+            <button class="filter-button hidden" id="search-toggle-button">Search</button>
             <div class="cuisine-dropdown" id="cuisine-dropdown">
                 <button class="filter-button" id="cuisine-dropdown-toggle" data-filter="cuisine">Cuisine</button>
                 <div class="cuisine-dropdown-content hidden" id="cuisine-dropdown-content">
                     <!-- Categories will be dynamically inserted here -->
                 </div>
             </div>
-            
-
             <button class="filter-button" id="rating-button">Rating</button>
             <div class="ratings-slider-container hidden">
                 <div class="ratings-slider-track"></div>
                 <input type="range" min="0" max="10" value="0" step="0.5" class="range-input" id="min-range">
                 <input type="range" min="0" max="10" value="10" step="0.5" class="range-input" id="max-range">
                 <div class="slider-values">
-                    <span id="min-value">0</span>
-                    <span id="max-value">10</span>
+                    <span id="min-value">0</span>–<span id="max-value">10</span>
                 </div>
             </div>
-            <button class="filter-button" id="get-location-button" >Location</button>
-
-
+            <button class="filter-button" id="get-location-button">Location</button>
         </div>
         <div id="review-list-container">
             <!-- Review cards will be dynamically inserted here -->
         </div>
         <div class="hidden" id="full-review-container">
-            <!-- Reviews will be dynamically inserted here -->
+            <!-- Full review will be dynamically inserted here -->
         </div>
-        <script  type="module" src="dist/gauge.js"></script>
         <script type="module" src="reviews.js"></script>
     </div>
 
-    <!-- Load reviews.js last to ensure functions are available -->
-    <script type="module" src="reviews.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-    crossorigin=""></script>
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
 </main>
 
 <footer>
-    <p><a href="/admin.html">&copy; 2024 The Honest 5</a></p>
+    <p><a href="/admin.html">&copy; 2024 The Honest Five</a></p>
 </footer>
-
-
 
 </body>
 </html>

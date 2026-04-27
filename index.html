@@ -3,29 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Food Review Blog</title>
+    <title>The Honest Five</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="init-link-container">
+        <div class="home-eyebrow">A food review blog</div>
+        <h1 class="home-title">The Honest Five</h1>
+        <p class="home-tagline">Ratings that actually mean something</p>
         <nav>
             <ul>
-                <li><a href="/map.html">MAP</a></li>
-                <li><a href="/reviews.html">REVIEWS</a></li>
-                <li><a href="/philosophy.html">PHILOSOPHY</a></li>
+                <li><a href="/reviews.html">Reviews</a></li>
+                <li><a href="/philosophy.html">Philosophy</a></li>
+                <li><a href="/map.html">Map</a></li>
             </ul>
         </nav>
+        <div class="home-divider"></div>
     </div>
 
     <footer>
-        <p>&copy; 2024 The Honest 5</p>
+        <p>&copy; 2024 The Honest Five</p>
     </footer>
     <script>
         // Check if this is an invite or recovery link
         if (window.location.hash) {
             const hashParams = new URLSearchParams(window.location.hash.substring(1));
             const linkType = hashParams.get('type');
-            
+
             // Redirect if it's either an invite or recovery link
             if (linkType === 'invite' || linkType === 'recovery') {
                 // Preserve the entire hash with all parameters

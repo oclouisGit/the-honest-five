@@ -1,5 +1,53 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.21.0/+esm';
-import './dist/gauge.js';
+
+// SVG half-donut gauge — color shifts by rating bracket
+// (rose < 5, amber 5–6.9, sage ≥ 7) per the design.
+function renderSvgGauge(mountEl, rating, size = 72, strokeW = 5) {
+    if (!mountEl) return;
+    const safeRating = Math.max(0, Math.min(10, Number(rating) || 0));
+    const r = (size / 2) - strokeW;
+    const cx = size / 2, cy = size / 2;
+    const startAngle = Math.PI;
+    const endAngle = 2 * Math.PI;
+    const totalArc = endAngle - startAngle;
+    const fillArc = (safeRating / 10) * totalArc;
+    const polar = (a) => ({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+    const s = polar(startAngle);
+    const e = polar(endAngle - 0.001);
+    const fe = polar(startAngle + fillArc);
+    const trackPath = `M ${s.x} ${s.y} A ${r} ${r} 0 1 1 ${e.x} ${e.y}`;
+    const fillLarge = fillArc > Math.PI ? 1 : 0;
+    const fillPath = safeRating > 0
+        ? `M ${s.x} ${s.y} A ${r} ${r} 0 ${fillLarge} 1 ${fe.x} ${fe.y}`
+        : '';
+    const hue = safeRating < 5 ? 15 : safeRating < 7 ? 38 : 80;
+    const color = `oklch(55% 0.12 ${hue})`;
+    const h = size / 2 + strokeW;
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('width', size);
+    svg.setAttribute('height', h);
+    svg.setAttribute('viewBox', `0 0 ${size} ${h}`);
+    svg.style.overflow = 'visible';
+    const track = document.createElementNS(ns, 'path');
+    track.setAttribute('d', trackPath);
+    track.setAttribute('fill', 'none');
+    track.setAttribute('stroke', 'rgba(75,59,47,0.1)');
+    track.setAttribute('stroke-width', strokeW);
+    track.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(track);
+    if (fillPath) {
+        const fill = document.createElementNS(ns, 'path');
+        fill.setAttribute('d', fillPath);
+        fill.setAttribute('fill', 'none');
+        fill.setAttribute('stroke', color);
+        fill.setAttribute('stroke-width', strokeW);
+        fill.setAttribute('stroke-linecap', 'round');
+        svg.appendChild(fill);
+    }
+    mountEl.innerHTML = '';
+    mountEl.appendChild(svg);
+}
 
 /*
 
@@ -189,22 +237,6 @@ async function fetchAndDisplayCategories() {
     }
 }
 
-// Customization for the Gauges made for each review
-let opts = {
-    angle: 0.15, // The span of the gauge arc
-    lineWidth: 0.3, // The line thickness
-    radiusScale: 1, // Relative radius
-    radius: 10,
-    pointer: {
-      length: 0.48, //Relative to gauge radius
-      strokeWidth: 0.1, // The thickness
-      color: '#4b3b2f' // Fill color
-    },
-    limitMax: false,     // If false, max value increases automatically if value > maxValue
-    limitMin: false,     // If true, the min value of the gauge will be fixed
-    percentColors: [[0.0, "#ff0000" ], [0.50, "#ffff00"], [1.0, "#00ff00"]],
-    highDpiSupport: true,     // High resolution support
-};
 
 
 function displayReviews(reviews) {
@@ -221,44 +253,40 @@ function displayReviews(reviews) {
             const restaurant = review.restaurants;
             console.log(review.restaurants);
             
+            const cuisineLabel = getCategoryById(category_to_id_map, restaurant.category_id) || '';
+            const coverImg = review.cover_image
+                ? `<img src="${review.cover_image}" alt="${restaurant.name || ''}">`
+                : `<div class="review-cover-image-placeholder">🍽</div>`;
+
             reviewElement.innerHTML = `
                 <div class="review-card-body-container" data-review-slug="${reviewSlug}" data-review-id="${review.id}" data-review-author="${review.authorDisplayName}">
-                    <div class="review-cover-image"> 
-                        <img src=${review.cover_image || 'No image available'}>
+                    <div class="review-cover-image">${coverImg}</div>
+                    <div class="review-text-container">
+                        <h1>${restaurant.name || 'Untitled'}</h1>
+                        <div class="review-cuisine">${cuisineLabel}</div>
+                        <p class="review-reviewer"><strong>Reviewer:</strong> ${review.authorDisplayName}</p>
+                        <p>${review.summary || 'No summary available'}</p>
                     </div>
-                    <div class="non-image-review-container"> 
-                        <div class="review-text-container"> 
-                            <h1>${restaurant.name || 'Untitled'}</h1>
-                            <p><strong>Reviewer:</strong> ${review.authorDisplayName}</p>
-                            <p>${review.summary || 'No summary available'}</p>
+                    <div class="right-sidebar">
+                        <div class="gauge-container" id="gauge-mount-${review.id}">
+                            <div class="rating-number-container">
+                                <h1>${review.rating}</h1>
+                            </div>
                         </div>
-
-                        <div class="right-sidebar">
-                            <div class="gauge-container"> 
-                                <canvas id=gauge-${review.id}></canvas>
-                            </div>
-                            <div class="rating-number-container"> 
-                                <h1 id=rating-number>${review.rating}/10</h1>
-                            </div>
-                            <div class="cuisine-label-container"> 
-                                <h1 id=cuisine-label>${getCategoryById(category_to_id_map, restaurant.category_id)}</h1>
-                            </div>
+                        <div class="cuisine-label-container">
+                            <h1>/10</h1>
                         </div>
                     </div>
                 </div>
             `;
 
-            const reviewCardBodyContainer = reviewElement.querySelector('.review-card-body-container');
-            reviewCardBodyContainer.dataset.reviewSlug = reviewSlug;
-            reviewCardBodyContainer.dataset.reviewId = review.id;
-
             reviewsContainer.appendChild(reviewElement);
-            var target = document.getElementById(`gauge-${review.id}`);
-            var gauge = new Gauge(target).setOptions(opts);
-            gauge.maxValue = 10;
-            gauge.setMinValue(0); 
-            gauge.set(review.rating);
-            gauge.animationSpeed = 32;
+            const gaugeMount = document.getElementById(`gauge-mount-${review.id}`);
+            if (gaugeMount) {
+                const ratingOverlay = gaugeMount.querySelector('.rating-number-container');
+                renderSvgGauge(gaugeMount, review.rating, 72, 5);
+                if (ratingOverlay) gaugeMount.appendChild(ratingOverlay);
+            }
         });
 
         reviewsContainer.addEventListener('click', (event) => {
@@ -442,128 +470,100 @@ function renderFullReview(reviews, sectionsByReview, initialReviewId) {
     // <div id="review-map" class="review-map" ></div>
 
     // `;
+    const cuisineLabel = getCategoryById(category_to_id_map, reviews[0].restaurants?.category_id?.toString()) || '';
+    const coverImageUrl = reviews[0].restaurants?.cover_image || reviews[0].cover_image;
+    const coverImageHTML = coverImageUrl
+        ? `<img src="${coverImageUrl}" alt="${reviews[0].restaurants?.name || ''}">`
+        : `<div class="review-cover-image-placeholder">🍽</div>`;
+
     let reviewHTML = `
+        <button class="fr-back" type="button" onclick="history.back()">← All Reviews</button>
+        <div class="fr-cuisine">${cuisineLabel}</div>
         <h1 class="article-title">${reviews[0].restaurants?.name || reviews[0].title}</h1>
         <h3 class="article-address">${reviews[0].restaurants?.address || ''}</h3>
 
-        <div id="review-map" class="review-map" ></div>
+        <div class="full-review-cover-image">${coverImageHTML}</div>
 
-        `;
+        <div id="review-map" class="review-map"></div>
+    `;
 
-        if (hasMultipleReviews) {
-            reviewHTML += `
+    if (hasMultipleReviews) {
+        reviewHTML += `
             <div class="tab-container" id="reviewTabs">
                 ${reviews.map((review) => `
-                    <button class="tab ${review.id === initialReviewId ? 'active' : ''}" 
+                    <button class="tab ${review.id === initialReviewId ? 'active' : ''}"
                             data-review-id="${review.id}"
                             data-author="${review.authorDisplayName}">
-                        <div class="tab-gauge-container">
-                            <canvas id="tab-gauge-${review.id}"></canvas>
-                            <div class="tab-rating">${review.rating}/10</div>
+                        <div class="tab-gauge-container" id="tab-gauge-mount-${review.id}">
+                            <div class="tab-rating">${review.rating}</div>
                         </div>
                         <div class="tab-author">${review.authorDisplayName}</div>
                     </button>
                 `).join('')}
             </div>`;
-        
 
-            // Create container for all review contents
-            reviewHTML += `<div id="reviewContents">`;
-
-            // Add each review's content (initially hidden except for active one)
-            reviews.forEach(review => {
-                const sections = sectionsByReview[review.id] || [];
-                const isActive = review.id === initialReviewId;
-                
-                reviewHTML += `
-                    <div class="review-content ${isActive ? 'active' : 'hidden'}" 
-                        data-review-id="${review.id}">
-                        <div class="full-review-cover-image"> 
-                            <img src="${review.cover_image || 'No image available'}" alt="${review.title}">
+        reviewHTML += `<div id="reviewContents">`;
+        reviews.forEach(review => {
+            const sections = sectionsByReview[review.id] || [];
+            const isActive = review.id === initialReviewId;
+            reviewHTML += `
+                <div class="review-content ${isActive ? 'active' : 'hidden'}"
+                    data-review-id="${review.id}">
+                    <div class="gauge-card-container">
+                        <div class="full-review-gauge-container" id="full-review-gauge-mount-${review.id}"></div>
+                        <div class="rating-number-container">
+                            <h1>${review.rating}<span style="font-family:var(--sans); font-size:14px; color:var(--sub); font-weight:400;">/10</span></h1>
                         </div>
-                        <div class="gauge-card-container">
-                            <p class="multiple-full-review-summary">${review.summary}</p>
+                        <div class="cuisine-label-container">
+                            <h1>${review.authorDisplayName}'s Rating</h1>
                         </div>
-
-
-                        <div class="review-sections">
-                            ${renderSections(sections)}
+                        <p class="multiple-full-review-summary">${review.summary || ''}</p>
+                    </div>
+                    <hr class="review-divider">
+                    <div class="review-sections">${renderSections(sections)}</div>
+                </div>`;
+        });
+    } else {
+        reviewHTML += `<div id="reviewContents">`;
+        reviews.forEach(review => {
+            const sections = sectionsByReview[review.id] || [];
+            const isActive = review.id === initialReviewId;
+            reviewHTML += `
+                <div class="review-content ${isActive ? 'active' : 'hidden'}"
+                    data-review-id="${review.id}">
+                    <div class="gauge-card-container">
+                        <div class="full-review-gauge-container" id="full-review-gauge-mount-${review.id}"></div>
+                        <div class="rating-number-container">
+                            <h1>${review.rating}<span style="font-family:var(--sans); font-size:14px; color:var(--sub); font-weight:400;">/10</span></h1>
                         </div>
-                    </div>`;
-            });
-        } else {
-            // Create container for all review contents
-            reviewHTML += `<div id="reviewContents">`;
-            
-            // Add each review's content (initially hidden except for active one)
-            reviews.forEach(review => {
-                const sections = sectionsByReview[review.id] || [];
-                const isActive = review.id === initialReviewId;
-                
-                reviewHTML += `
-                    <div class="review-content ${isActive ? 'active' : 'hidden'}" 
-                        data-review-id="${review.id}">
-                        <div class="gauge-card-container">
-                            <div class="full-review-gauge-container"> 
-                                <canvas id="full-review-gauge-${review.id}"></canvas>
-                            </div>
-                            <div class="rating-number-container"> 
-                                <h1 id="rating-number">${review.rating}/10</h1>
-                            </div>
-                            <div class="cuisine-label-container"> 
-                                <h1 id="cuisine-label">${getCategoryById(category_to_id_map, reviews[0].restaurants?.category_id.toString())}</h1>
-                            </div>
-                            <p class="full-review-summary">${review.summary}</p>
+                        <div class="cuisine-label-container">
+                            <h1>${cuisineLabel}</h1>
                         </div>
-
-                        <hr class="review-divider">
-
-                        <div class="review-sections">
-                            ${renderSections(sections)}
-                        </div>
-                    </div>`;
-            });
-        }
-    reviewHTML += '</div>'; 
+                        <p class="full-review-summary">${review.summary || ''}</p>
+                    </div>
+                    <hr class="review-divider">
+                    <div class="review-sections">${renderSections(sections)}</div>
+                </div>`;
+        });
+    }
+    reviewHTML += '</div>';
     // reviewHTML += '<div class="review-sections"><h1 class="section-heading">Map</h1><div id="review-map" class="review-map" ></div></div></div>'; 
     
     fullReviewContainer.innerHTML = reviewHTML;
 
-    // After setting innerHTML, initialize gauges once and store them
-    if (hasMultipleReviews) {
-        // Initialize tab gauges only
-        reviews.forEach(review => {
-            const tabTarget = document.getElementById(`tab-gauge-${review.id}`);
-            if (tabTarget && !gauges[`tab-${review.id}`]) {
-                const tabGauge = new Gauge(tabTarget).setOptions({
-                    ...opts,
-                    radiusScale: 0.8,
-                    lineWidth: 0.2,
-                    pointer: {
-                        length: 0.5,
-                        strokeWidth: 0.08,
-                        color: '#4b3b2f'
-                    }
-                });
-                tabGauge.maxValue = 10;
-                tabGauge.setMinValue(0);
-                tabGauge.set(review.rating);
-                gauges[`tab-${review.id}`] = tabGauge;
+    // Initialize SVG gauges
+    reviews.forEach(review => {
+        const fullMount = document.getElementById(`full-review-gauge-mount-${review.id}`);
+        if (fullMount) renderSvgGauge(fullMount, review.rating, 140, 9);
+        if (hasMultipleReviews) {
+            const tabMount = document.getElementById(`tab-gauge-mount-${review.id}`);
+            if (tabMount) {
+                const ratingOverlay = tabMount.querySelector('.tab-rating');
+                renderSvgGauge(tabMount, review.rating, 56, 4);
+                if (ratingOverlay) tabMount.appendChild(ratingOverlay);
             }
-        });
-    } else {
-        // Initialize single review gauge
-        reviews.forEach(review => {
-            const contentTarget = document.getElementById(`full-review-gauge-${review.id}`);
-            if (contentTarget && !gauges[`content-${review.id}`]) {
-                const contentGauge = new Gauge(contentTarget).setOptions(opts);
-                contentGauge.maxValue = 10;
-                contentGauge.setMinValue(0);
-                contentGauge.set(review.rating);
-                gauges[`content-${review.id}`] = contentGauge;
-            }
-        });
-    }
+        }
+    });
 
     if (hasMultipleReviews) {
         const tabContainer = document.getElementById('reviewTabs');
@@ -664,18 +664,12 @@ function renderSections(sections) {
     }).join('');
 }
 
-// Function to handle gauge initialization
 function initializeGauge(review) {
-    // Wait briefly to ensure DOM is ready
     setTimeout(() => {
-        const target = document.getElementById(`full-review-gauge-${review.id}`);
+        const target = document.getElementById(`full-review-gauge-mount-${review.id}`);
         if (target) {
             target.classList.remove('hidden');
-            const gauge = new Gauge(target).setOptions(opts);
-            gauge.maxValue = 10;
-            gauge.setMinValue(0); 
-            gauge.set(review.rating);
-            gauge.animationSpeed = 32;
+            renderSvgGauge(target, review.rating, 140, 9);
         }
     }, 0);
 }
