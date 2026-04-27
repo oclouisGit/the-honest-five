@@ -211,15 +211,11 @@ footer a:hover { color: var(--cream); }
   padding: 14px 0 12px;
   align-items: center;
   border-bottom: 1px solid var(--border);
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: visible;
+  flex-wrap: wrap;
+  overflow: visible;
   position: relative;
   z-index: 10;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
 }
-.filter-header::-webkit-scrollbar { display: none; }
 
 /* Pill button base — applied to .filter-button and friends */
 .filter-button {
@@ -290,6 +286,7 @@ footer a:hover { color: var(--cream); }
 .cuisine-dropdown {
   position: relative;
   flex-shrink: 0;
+  z-index: 600;
 }
 .cuisine-dropdown-content {
   position: absolute;
@@ -299,7 +296,7 @@ footer a:hover { color: var(--cream); }
   border: 1.5px solid var(--border);
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(75,59,47,0.12);
-  z-index: 500;
+  z-index: 1000;
   min-width: 180px;
   max-height: 320px;
   overflow-y: auto;
@@ -396,7 +393,7 @@ footer a:hover { color: var(--cream); }
 /* ════════════════════════════════════════
    REVIEW CARD (list)
    ════════════════════════════════════════ */
-#review-list-container { padding: 12px 0; }
+#review-list-container { padding: 12px 0; position: relative; z-index: 1; }
 
 .review-card { margin: 0 0 12px; }
 
